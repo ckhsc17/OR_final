@@ -1,0 +1,202 @@
+\documentclass[11pt,a4paper]{article}
+
+% for Chinese
+\usepackage{fontspec}
+\newfontfamily\chinesefont{Noto Sans CJK SC} % Font for Chinese
+
+% useful packages
+% \usepackage{amsfonts}
+% \usepackage{amssymb}
+\usepackage{amsmath}
+% \usepackage{amsthm}
+% \usepackage{graphicx}
+% % \usepackage{natbib}
+\usepackage{textcomp}
+% \usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+% \usepackage{color}
+% \usepackage{fullpage}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{authblk}
+\usepackage{algorithm}
+% \usepackage{algpseudocode}
+% \usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage[capitalize]{cleveref}
+
+
+
+% basic settings
+\renewcommand{\baselinestretch}{1.25}
+\parskip=5pt
+\parindent=20pt
+\footnotesep=5mm
+
+\title{Optimizing Consensus Building in vTaiwan Using Integer Programming \\ \large Operations Research, Spring 2025 (113-2) \\ Group M Final Project Proposal}
+
+\author{b09607059 {\chinesefont 蔡宜芳}, b12705014 {\chinesefont 陳泊華}, b12705027 {\chinesefont 徐郁翔}, T13H06312 Philip}
+\author{T13H06303 Kuehnel Paul}
+\affil{Department of Information Management, National Taiwan University}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+\label{sec-intro}
+
+The \href{https://vtaiwan.tw}{vTaiwan} system is an innovative digital democracy platform used in Taiwan that is designed to facilitate public policy deliberation. Despite its successes, challenges such as \textit{group polarization}, \textit{unbalanced participation}, and \textit{inefficiencies in consensus formation} remain.  
+
+For example, during discussions on \href{https://blog.pol.is/uber-responds-to-vtaiwans-coherent-blended-volition-3e9b75102b9b}{Uber’s legality}, tech-savvy users and gig economy supporters dominated the dialogue, creating an echo chamber that marginalized traditional taxi drivers—highlighting the issue of \textbf{group polarization}. In the case of online \href{https://www.technologyreview.com/2018/08/21/240284/the-simple-but-ingenious-system-taiwan-uses-to-crowdsource-its-laws/}{alcohol sales}, most participants were industry insiders and libertarian advocates, while key stakeholders like public health experts and concerned parents were largely absent, exposing the problem of \textbf{unbalanced participation} and \textbf{inefficiencies in consensus formation}. These examples underscore the need for improved design, better stakeholder engagement, and smarter facilitation to ensure vTaiwan remains both inclusive and effective.
+
+Currently, vTaiwan uses \textbf{natural clustering} via the \href{https://pol.is/home}{Pol.is} platform, which groups participants based on opinion similarity. This can lead to echo chambers where some perspectives dominate discussions. 
+Our project aims to optimize the discussion process using \textbf{Integer Programming (IP)}, as a structured alternative to the clustering approach used in \textbf{Pol.is}. By enhancing group diversity, our approach seeks to complement Pol.is in cases where more structured deliberation is beneficial and provide a valuable extension to the system. 
+
+\section{Data Process}
+%\label{sec-problem}
+
+\subsection{Data Source}
+
+
+\subsection{Data Process}
+
+\section{Problem Description}
+\label{sec-problem}
+
+In vTaiwan deliberations, the composition of discussion groups significantly affects the quality and inclusiveness of the discourse. Ideally, groups should be structured to foster constructive discussions that balance consensus and diversity. If groups are too homogeneous, they may lead to echo chambers, reinforcing pre-existing opinions without exposing participants to alternative perspectives. Conversely, if groups are too diverse, disagreements may become unproductive, leading to fragmented discussions where common ground is difficult to find.
+
+Traditional clustering techniques—such as k-means, which partitions data by minimizing intra-cluster variance, or spectral clustering, which leverages graph Laplacians to identify communities—are effective in grouping participants based on similarity. However, these methods suffer from notable limitations in participatory settings: they offer no direct control over group sizes, cannot enforce fair representation across demographic or interest-based subgroups, and are prone to producing imbalanced or homogeneous clusters that may amplify existing biases. These drawbacks hinder inclusive and equitable deliberation. To address these challenges, we propose an optimization-based clustering approach that explicitly incorporates constraints for group size, diversity, and representational balance, enabling more structured and fair participant grouping for policy discussions and collaborative decision-making. %The constraint description should be re-confirmed later
+
+\subsection{Mathematical Model}
+\label{sec-model}
+
+Let \( P = \{1, 2, \dots, n\} \) denote the set of participants and \( G = \{1, 2, \dots, m\} \) the set of groups. Agreement between participants \( i \) and \( j \) is represented by \( A(i, j) \), which quantifies their level of similarity based on their responses to policy questions or other opinion measures. To avoid excessive homogeneity, we define a diversity measure \( D(i, j) \), which ensures that groups contain a mix of perspectives.
+
+To model the assignment of participants to groups, we define a binary decision variable:
+\begin{equation}
+    x_{ij} =
+    \begin{cases} 
+        1, & \text{if participant } i \text{ is assigned to group } j, \\
+        0, & \text{otherwise}.
+    \end{cases}
+\end{equation}
+
+\subsection{Objective Function: Maximizing Agreement}
+
+To encourage consensus-driven discussions, we maximize the total agreement within groups:
+\begin{equation}
+\max \sum_{j \in G} \sum_{i,k \in P} A(i,k) x_{ij} x_{kj}.
+\end{equation}
+This ensures that participants who share similar perspectives are grouped together, facilitating constructive and cooperative discussions.
+
+\subsection{Constraints}
+
+\paragraph{Group Assignment Constraints.} Each participant must be assigned to exactly one group:
+\begin{equation}
+    \sum_{j \in G} x_{ij} = 1, \quad \forall i \in P.
+\end{equation}
+Additionally, group sizes must remain within predefined limits:
+\begin{equation}
+    S_{\min} \leq \sum_{i \in P} x_{ij} \leq S_{\max}, \quad \forall j \in G.
+\end{equation}
+
+\paragraph{Diversity Constraint.} To prevent excessive homogeneity, we enforce a lower bound on diversity within each group. Let \( D(i, j) \) represent a measure of disagreement (e.g., ideological distance or differing response patterns). We require that, for each group, the sum of disagreement values among its members exceeds a predefined threshold \( \delta \):
+\begin{equation}
+    \sum_{i,k \in P} D(i,k) x_{ij} x_{kj} \geq \delta, \quad \forall j \in G.
+\end{equation}
+This ensures that every group contains a mix of perspectives, avoiding overly uniform clusters.
+
+\section{Performance Analysis}
+
+Solving the integer program exactly may be computationally expensive for large-scale deliberation settings. To improve efficiency, we consider a Linear Programming (LP) relaxation, where the binary constraint on \( x_{ij} \) is replaced with:
+\begin{equation}
+    x_{ij} \in [0,1].
+\end{equation}
+This allows fractional assignments, which can be interpreted probabilistically or rounded to obtain integer solutions. While this relaxation sacrifices strict guarantees on discrete assignments, it provides a computationally efficient approximation that can guide group formation.
+
+\section{Conclusion and Expected Results}
+
+By formulating the group formation problem as an Integer Program, we introduce a structured and flexible approach to participant assignment in deliberative settings. Our model maximizes intra-group agreement to foster constructive discussions while enforcing a diversity constraint to prevent excessive homogeneity. This formulation overcomes the limitations of traditional clustering methods, which do not provide explicit control over group size or diversity. The inclusion of an LP relaxation offers a computationally efficient alternative, making the approach scalable for large deliberative processes. The proposed optimization model provides a practical and theoretically grounded method for improving discussion dynamics in vTaiwan and similar participatory platforms. 
+We expect the following results. First, we anticipate \textbf{more balanced groups} in terms of both consensus and diversity, compared to the natural clustering method currently used in Pol.is. Second, we expect \textbf{improved discussion efficiency} through optimal facilitator assignment. Third, we foresee \textbf{more representative decisions}, as the structured approach ensures the incorporation of diverse perspectives into discussions.
+
+\section{Data Collection and Implementation Plan}
+
+vTaiwan currently utilizes the open-source platform Pol.is, which powers policy deliberation using machine learning algorithms. For our project, we will run our Operations Research (OR) model using the open datasets provided by Pol.is on GitHub.
+
+\subsection{Data Sources}
+
+\textbf{\texttt{participants-votes.csv}:} This dataset includes participant voting behavior and group assignments, such as the number of comments written, the number of votes cast, and the group each participant belongs to based on K-means clustering. \\
+\textbf{\texttt{comments.csv}:} This dataset contains details about each comment made during the deliberation, including the author’s ID, vote counts (agrees, disagrees), moderation status, and the text of the comment.
+
+\subsection{Pre-moderation Statistics}
+
+Before moderation, the dataset contains the following summary:
+\begin{itemize}
+    \item Total Votes: 49,997 votes cast in the conversation.
+    \item Total Comments: 197 comments written by participants.
+    \item Total Visitors: 4,668 unique visitors to the conversation.
+    \item Total Voters: 49,997 participants who voted on the comments.
+    \item Total Commenters: 197 participants who contributed written comments.
+\end{itemize}
+
+These values represent the raw data before any moderation is applied. In Pol.is, moderation involves filtering or removing content that violates platform guidelines (e.g., abusive or irrelevant comments). Comments are flagged as allowed (1), unmoderated (0), or moderated out (-1), ensuring the discussion remains focused and respectful.
+
+\subsection{Implementation Plan}
+
+We will apply an Integer Programming (IP) model to optimize the group formation process in vTaiwan deliberations. The goal is to create groups that strike a balance between intra-group consensus and inter-group diversity while minimizing group polarization.
+
+The initial step involves \textbf{data preparation}, where datasets will be preprocessed to extract relevant features such as participant votes, comment data, and group assignments. This stage also includes cleaning and formatting the data to ensure compatibility with the optimization model.
+
+Next, we will develop an \textbf{Integer Programming Model}. This involves defining the optimization problem using participant voting data and group assignments as inputs. The objectives will be set to maximize consensus within groups while ensuring diversity across groups. Constraints will be introduced to maintain the desired group size, balance, and reduce polarization.
+
+Following model development, \textbf{model execution} will be performed. The preprocessed data will serve as input to the IP model, and the optimization problem will be solved to obtain the best possible group configurations.
+
+The performance of the optimized groups will then undergo \textbf{evaluation and benchmarking}. This will involve assessing predefined metrics such as group diversity, consensus, and polarization. The model's performance will be benchmarked against baseline clustering methods (e.g., K-means) to assess the improvement in deliberation quality.
+
+Finally, \textbf{implementation and refinement} will be conducted. Based on the evaluation results, the model will be refined as necessary to improve group formation. We will also explore the impact of different constraints and parameters on the optimization process to enhance the flexibility and robustness of the model.
+
+By applying this structured approach, we aim to improve the deliberation process on vTaiwan, making it more inclusive, balanced, and conducive to informed decision-making.
+
+
+
+% \textbf{Solution Approach:}
+% \begin{enumerate}
+%     \item Solve the \textbf{MIP model using Gurobi} for small instances.
+%     \item Compare with LP as a lower bound.
+%     \item Implement a \textbf{greedy heuristic algorithm} for larger cases.
+%     \item Compare with standard clustering algorithms (k-means, spectral clustering).
+% \end{enumerate}
+
+% \textbf{Evaluation Metrics:}
+% \begin{itemize}
+%     \item \textbf{Consensus Score}: Final agreement measure for each group.
+%     \item \textbf{Time-to-Consensus}: Speed of reaching policy decisions.
+%     \item \textbf{Opinion Spread Reduction}: Measuring polarization before vs. after deliberation.
+% \end{itemize}
+
+
+
+
+
+% \section{Conclusion and Future Work}
+% \label{sec-conclusion}
+
+% This project applies \textbf{Operations Research techniques} to optimize deliberative processes in online democracy platforms. By using \textbf{Integer Programming}, we aim to:
+% \begin{itemize}
+%     \item Improve \textbf{group diversity} and avoid polarization compared to the clustering approach used in \textbf{Pol.is}.
+%     \item Reduce the \textbf{time-to-consensus} with optimal facilitator assignments.
+%     \item Ensure \textbf{fair and representative decision-making} through structured optimization.
+% \end{itemize}
+
+% \noindent While \textbf{Pol.is} employs machine learning-based natural clustering for real-time deliberations, our \textbf{optimization approach provides an alternative framework} that may be useful in certain deliberation stages or in retrospective analysis. 
+
+% \noindent Future research directions include:
+% \begin{itemize}
+%     \item Extending the model to \textbf{multi-round deliberation cycles}.
+%     \item Incorporating \textbf{agent-based simulations} to model long-term opinion shifts.
+%     \item Developing \textbf{game-theoretic strategies} to balance incentives for participation.
+%     \item Evaluating the \textbf{computational trade-offs} between real-time clustering (Pol.is) and structured optimization (Integer Programming).
+% \end{itemize}
+
+\end{document}
