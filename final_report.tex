@@ -107,6 +107,204 @@ Additionally, group sizes must remain within predefined limits:
 \end{equation}
 This ensures that every group contains a mix of perspectives, avoiding overly uniform clusters.
 
+\section{Mathematical Model (V2)}
+
+\label{sec-model}
+
+Let:
+\begin{itemize}
+\item $P = \{1, 2, \dots, n\}$: Set of participants
+\item $G = \{1, 2, \dots, m\}$: Set of groups
+\item $A(i,k)$: Agreement score between participant $i$ and $k$
+\item $D(i,k)$: Diversity score (e.g., ideological distance) between participant $i$ and $k$
+\item $E(i)$: Engagement score of participant $i$ (e.g., number of comments or votes)
+\item $S(i) \in \{-1, 0, 1\}$: Sentiment score of participant $i$ toward a target topic (disagree, neutral, agree)
+\item $C(i) \in \{0,1\}$: Commentator indicator (1 if participant has authored at least one comment)
+\end{itemize}
+
+Define binary variable:
+
+$$
+x_{ij} = \begin{cases}
+1 & \text{if participant } i \text{ is assigned to group } j \\
+0 & \text{otherwise}
+\end{cases}
+$$
+
+---
+
+\subsection{Objective Function}
+
+We define a composite objective to both **maximize intra-group agreement** and **minimize inter-group polarization**, while ensuring active participation and viewpoint diversity:
+
+$$
+\max \left[
+\lambda_1 \sum_{j \in G} \sum_{i,k \in P} A(i,k) x_{ij} x_{kj}
+- \lambda_2 \sum_{j_1 < j_2} \sum_{i \in P} \sum_{k \in P} D(i,k) x_{ij_1} x_{kj_2}
+- \lambda_3 \cdot \text{StdDev}\left( \left\{ \sum_{i \in P} E(i) x_{ij} \right\}_{j \in G} \right)
+\right]
+$$
+
+Where:
+
+$\lambda_1$, $\lambda_2$, and $\lambda_3$ are weights to balance agreement, polarization, and engagement fairness.
+
+The second term penalizes ideological distances across groups to reduce polarization.
+
+The third term minimizes the standard deviation of total engagement scores across groups to encourage equal participation.
+
+---
+
+\subsection{Constraints}
+
+1. Unique Group Assignment
+   Each participant is assigned to exactly one group:
+
+$$
+\sum_{j \in G} x_{ij} = 1 \quad \forall i \in P
+$$
+
+2. Group Size Limits and Odd Cardinality
+   Each group must contain an **odd number** of participants within a given size range:
+
+$$
+S_{\min} \leq \sum_{i \in P} x_{ij} \leq S_{\max}, \quad \forall j \in G
+$$
+
+$$
+\sum_{i \in P} x_{ij} \bmod 2 = 1 \quad \forall j \in G
+$$
+
+3. Minimum Intra-group Diversity
+   Ensure sufficient diversity within each group:
+
+$$
+\sum_{i,k \in P} D(i,k) x_{ij} x_{kj} \geq \delta, \quad \forall j \in G
+$$
+
+4. At Least One Commentator per Group
+   Ensure every group has at least one active participant who made comments:
+
+$$
+\sum_{i \in P} C(i) \cdot x_{ij} \geq 1 \quad \forall j \in G
+$$
+
+5. Sentiment Balance within Group
+   Ensure each group includes a diversity of opinions on a key topic (e.g., Uber), by enforcing sentiment mix:
+   Let $S_{\text{agree}}, S_{\text{neutral}}, S_{\text{disagree}}$ be the number of members with each sentiment in group $j$:
+
+$$
+\begin{aligned}
+S_{\text{agree},j} &= \sum_{i \in P,\, S(i) = +1} x_{ij} \\
+S_{\text{disagree},j} &= \sum_{i \in P,\, S(i) = -1} x_{ij} \\
+S_{\text{neutral},j} &= \sum_{i \in P,\, S(i) = 0} x_{ij}
+\end{aligned}
+$$
+
+Add a soft or hard constraint (depending on experiment design) to require:
+
+$$
+S_{\text{agree},j} \cdot S_{\text{disagree},j} > 0 \quad \text{(at least one + and one - per group)}
+$$
+
+Or alternatively: ensure weighted sentiment score per group stays near zero:
+
+$$
+\left| \sum_{i \in P} S(i) \cdot x_{ij} \right| \leq \theta, \quad \forall j \in G
+$$
+
+---
+
+\subsection{Optional LP Relaxation}
+
+To handle scalability for large-scale deliberation settings, the binary constraint on $x_{ij}$ may be relaxed:
+
+$$
+x_{ij} \in [0,1]
+$$
+
+This allows fractional assignments, and final groupings can be obtained via rounding heuristics or stochastic sampling.
+
+---
+
+\subsection{Summary}
+
+This mathematical formulation incorporates social, behavioral, and structural constraints into an Integer Programming framework that supports structured, inclusive, and diverse online deliberation. By tuning objective weights $\lambda_1 \sim \lambda_3$ and experimenting with sentiment and engagement constraints, practitioners can flexibly adapt the model to suit different policy topics and deliberative formats.
+
+
+\section{Mathematical Model (V3)}
+\label{sec-model}
+
+Let:
+\begin{itemize}
+    \item $P = \{1, 2, \dots, n\}$: Set of participants
+    \item $G = \{1, 2, \dots, m\}$: Set of groups
+    \item $D(i,k)$: Diversity score between participant $i$ and $k$ (e.g., ideological distance)
+    \item $E(i)$: Engagement score of participant $i$ (e.g., number of distinct issues voted on)
+    \item $x_{ij} \in \{0,1\}$: Binary variable indicating whether participant $i$ is assigned to group $j$
+\end{itemize}
+
+\subsection{Objective Function}
+
+We aim to \textbf{maximize intra-group diversity} to promote exposure to differing perspectives, while also minimizing variance in engagement across groups to ensure equitable participation.
+
+\[
+\max \left[
+\lambda_1 \sum_{j \in G} \sum_{i,k \in P} D(i,k)\,x_{ij} x_{kj}
+- \lambda_2 \cdot \mathrm{Var}\left( \left\{ \sum_{i \in P} E(i) x_{ij} \right\}_{j \in G} \right)
+\right]
+\]
+
+\begin{itemize}
+    \item The first term rewards groupings with greater internal diversity.
+    \item The second term penalizes unequal distribution of participant engagement across groups.
+    \item $\lambda_1, \lambda_2 > 0$ are weights that balance diversity and fairness.
+\end{itemize}
+
+\subsection{Constraints}
+
+\paragraph{(1) Unique Assignment}
+Each participant must be assigned to exactly one group:
+\[
+\sum_{j \in G} x_{ij} = 1 \quad \forall i \in P
+\]
+
+\paragraph{(2) Group Size Bounds and Odd Cardinality}
+Each group must contain an odd number of participants within specified bounds:
+\[
+S_{\min} \leq \sum_{i \in P} x_{ij} \leq S_{\max}, \quad \forall j \in G
+\]
+\[
+\sum_{i \in P} x_{ij} \bmod 2 = 1 \quad \forall j \in G
+\]
+
+\paragraph{(3) Upper Bound on Intra-group Diversity}
+To prevent excessive fragmentation or conflict within groups, intra-group diversity must not exceed a predefined threshold:
+\[
+\sum_{i,k \in P} D(i,k)\,x_{ij} x_{kj} \leq \delta \quad \forall j \in G
+\]
+
+\paragraph{(4) Minimum Group Engagement}
+Ensure that each group contains a sufficient level of active participation:
+\[
+\sum_{i \in P} E(i)\,x_{ij} \geq \eta \quad \forall j \in G
+\]
+
+\subsection{Optional LP Relaxation}
+
+To scale to larger datasets, binary constraints on $x_{ij}$ can be relaxed:
+
+\[
+x_{ij} \in [0,1]
+\]
+
+A fractional solution can then be post-processed through probabilistic rounding or heuristic assignment.
+
+\subsection{Summary}
+
+This optimization model supports structured and inclusive deliberation by explicitly balancing diversity, engagement, and group structure constraints. The use of diversity bounds avoids unproductive polarization, while the engagement-aware objective promotes equitable group participation.
+
+
 \section{Performance Analysis}
 
 Solving the integer program exactly may be computationally expensive for large-scale deliberation settings. To improve efficiency, we consider a Linear Programming (LP) relaxation, where the binary constraint on \( x_{ij} \) is replaced with:
