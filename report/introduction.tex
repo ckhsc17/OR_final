@@ -1,0 +1,67 @@
+The \href{https://vtaiwan.tw}{vTaiwan} system is an innovative digital democracy platform
+designed to facilitate public policy deliberation in Taiwan.
+It integrates online participation with structured, in-person discussions,
+offering a hybrid model that has received international attention.
+However, despite its successes, several persistent challenges have been identified:
+\textit{group polarization}, \textit{unbalanced participation},
+and \textit{inefficiencies in consensus formation}.
+
+For instance, during the deliberation
+on \href{https://blog.pol.is/uber-responds-to-vtaiwans-coherent-blended-volition-3e9b75102b9b}{Uber's legality},
+technologically savvy users and gig economy supporters dominated the discussion,
+creating an echo chamber that marginalized traditional taxi drivers.
+Similarly, in the online debate over
+\href{https://www.technologyreview.com/2018/08/21/240284/the-simple-but-ingenious-system-taiwan-uses-to-crowdsource-its-laws/}{alcohol sales},
+participation was skewed towards industry representatives and libertarian advocates,
+with minimal involvement from public health experts or concerned parents.
+These cases highlight how self-selection and clustering by opinion can hinder inclusive deliberation
+and suppress diverse perspectives.
+
+Currently, the deliberative stage in vTaiwan is supported by \href{https://pol.is/home}{Pol.is},
+which groups participants via natural clustering based on opinion similarity.
+While effective for mapping consensus, this clustering method can reinforce polarization
+and fails to guarantee stakeholder balance within discussion groups.
+To ensure inclusive and high-quality deliberation, it is essential to move beyond purely organic grouping
+and explore structured alternatives for group formation.
+
+\subsubsection*{Context: Deliberation and Group Design}
+
+Theoretical and empirical research in deliberative democracy emphasizes
+the critical role of group composition in shaping the quality of
+discourse~\parencite{fay2000group}.
+Small, diverse groups are associated with richer argument exchange, lower risks of domination,
+and more robust consensus
+formation~\parencite{anagnostopoulos2012groupformation}.
+Notably, group size matters: research shows that odd-sized groups between 5 and 13 participants
+strike a balance between inclusiveness and manageability,
+minimizing deadlocks while still representing multiple
+perspectives~\parencite{fishkin2009deliberative}.
+
+Ensuring fairness and representativeness in group composition requires attention to stakeholder affiliations,
+opinion diversity, and participant engagement levels.
+Without such design constraints, group formation may reproduce existing inequalities
+or concentrate influence among dominant voices.
+% TODO: for future work because very delicate:
+% one should consider that there is a spectrum of two types of voices that need different balancing strategies:
+% (1) those about facts or backed by hard evidence (like climate change),
+% there the balance should be according to actual representation in the population/participants
+% (2) those that are opinion-based (no evidence) or simply a matter of personal taste.
+% There the balance should be such to also represent minorities equally to ensure a fair representation of all voices.
+
+\subsubsection*{Project Overview}
+
+This project proposes a formal optimization approach to deliberative group formation
+for use in platforms such as vTaiwan.
+Rather than relying on emergent clustering, we model the assignment
+of participants to groups as a constrained Integer Programming (IP) problem.
+Each participant is represented by a feature vector derived from their engagement
+(e.g., comment count, rating frequency, sentiment, and inferred stakeholder set).
+Our objective is to generate groupings that satisfy three principles:
+\begin{enumerate}
+  \item Maximize intra-group diversity;
+  \item Ensure no stakeholder set dominates a significant majority of groups;
+  \item Balance total engagement levels and optionally sentiment across groups.
+\end{enumerate}
+Group sizes are constrained to be odd numbers from $\{3,5,7,9,11,13\}$.
+We formulate an IP model that encodes these goals and constraints,
+and we also explore its linear relaxation to assess solution quality and approximation potential.

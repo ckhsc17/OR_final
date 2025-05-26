@@ -1,0 +1,81 @@
+%! suppress = UnresolvedReference
+\documentclass[11pt,a4paper]{article}
+
+% for Chinese
+\usepackage{fontspec}
+\newfontfamily\chinesefont{Heiti TC} % Font for Chinese
+
+% useful packages
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\setlist[itemize]{itemsep=0pt, topsep=0pt}
+\setlist[enumerate]{itemsep=0pt, topsep=0pt}
+\usepackage{authblk}
+\usepackage{algorithm}
+\usepackage{hyperref}
+\usepackage[capitalize]{cleveref}
+\usepackage{amsfonts}
+\usepackage[backend=biber,style=alphabetic]{biblatex}
+\usepackage{csquotes}
+\addbibresource{references.bib}
+
+
+
+% basic settings
+\renewcommand{\baselinestretch}{1.25}
+\parskip=5pt
+\parindent=20pt
+\footnotesep=5mm
+
+\title{Optimizing Consensus Building in vTaiwan Using Integer Programming \\
+\large Operations Research, Spring 2025 (113-2) \\ Group M Final Project Proposal}
+
+\author{b09607059 {\chinesefont 蔡宜芳}, b12705014 {\chinesefont 陳泊華},
+    b12705027 {\chinesefont 徐郁翔}, T13H06312 Philip, T13H06303 Kuehnel Paul}
+\affil{Department of Information Management, National Taiwan University}
+
+\begin{document}
+\maketitle
+
+
+\begin{abstract}
+
+\centering
+This paper formulates and solves an optimization problem for assigning participants
+in the vTaiwan process to deliberative groups.
+We balance intra-group diversity, stakeholder fairness, and engagement,
+while adhering to theoretically grounded group size constraints.
+
+\end{abstract}
+
+\newpage
+
+\section{Introduction}\label{sec:intro}
+\input{introduction}
+
+\section{Background and Related Work}\label{sec:background}
+\input{background-and-related-work}
+
+\section{Problem Formulation}\label{sec:problem_formulation}
+\input{problem-formulation}
+
+\section{Summary and Design Justifications}\label{sec:design}
+\input{design-justifications}
+
+\section{Solution Approach}\label{sec:solution}
+\input{solution-approach}
+
+\section{Experiments and Results}\label{sec:experiments}
+\input{experiments-and-results}
+
+\section{Performance Analysis}\label{sec:performance}
+\input{performance-analysis}
+
+\section{Conclusion}\label{sec:conclusion}
+\input{conclusion}
+
+\end{document}

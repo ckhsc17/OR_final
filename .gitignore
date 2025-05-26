@@ -1,1 +1,36 @@
 venv/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.json
+*.csv
+*.db
+# Latex files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.log
+*.dvi
+*.fls
+*.out
+*.xml
+*.gz
+*.pdf
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+# License files
+LICENSE
+*.lic
+# PyCharm files
+.idea/
+# VS Code files
+.vscode/
+# MacOS files
+.DS_Store
+# Windows files
+Thumbs.db
+
+
+
