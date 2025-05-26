@@ -1,204 +1,192 @@
-import pandas as pd
-import numpy as np
 import time
-from gurobipy import Model, GRB, quicksum, QuadExpr
-from scipy.sparse import csr_matrix
-from sklearn.metrics.pairwise import cosine_similarity
-
-# --- 1. Data Loading & Matrix Construction ---
-def load_data(pv_path, cm_path):
-    pv = pd.read_csv(pv_path)
-    cm = pd.read_csv(cm_path)
-    participants = pv['participant'].tolist()
-    n = len(participants)
-    # Votes matrix
-    vote_cols = [c for c in pv.columns if c.isdigit()]
-    votes = pv[vote_cols].fillna(0).values
-    norms = np.linalg.norm(votes, axis=1)
-    A = (votes @ votes.T) / (norms[:, None] * norms[None, :] + 1e-9) # cosine similarity
-    D = 1 - A
-    E = (pv['n-comments'] + pv['n-votes']).values
-    S = np.sign(pv['n-agree'] - pv['n-disagree']).astype(int)
-    C = (pv['n-comments'] > 0).astype(int)
-    return participants, n, A, D, E, S, C
-
-
-from scipy.sparse import csr_matrix
-from sklearn.metrics.pairwise import cosine_similarity
-
-def load_data_sparse(pv_path, cm_path):
-    pv = pd.read_csv(pv_path)
-    cm = pd.read_csv(cm_path)
-    participants = pv['participant'].tolist()
-    n = len(participants)
-    vote_cols = [c for c in pv.columns if c.isdigit()]
-
-    votes_sparse = csr_matrix(pv[vote_cols].fillna(0).values)
-    A = cosine_similarity(votes_sparse)
-    D = 1 - A
-
-    E = (pv['n-comments'] + pv['n-votes']).values
-    S = np.sign(pv['n-agree'] - pv['n-disagree']).astype(int)
-    C = (pv['n-comments'] > 0).astype(int)
-    return participants, n, A, D, E, S, C
-
-from scipy.sparse import csr_matrix
-from sklearn.metrics.pairwise import cosine_similarity
-import pandas as pd
 import numpy as np
+import pandas as pd
+from scipy.sparse import csr_matrix
+from sklearn.metrics.pairwise import cosine_similarity
 
-def load_data_sparse_subsample(pv_path, cm_path, sample_from_inactive=50):
-    # 讀取資料
-    pv_full = pd.read_csv(pv_path)
-    cm = pd.read_csv(cm_path)
+import gurobipy as gp
+from gurobipy import Model, GRB, quicksum, QuadExpr
 
-    # 分成 active / inactive
-    active = pv_full[pv_full['n-comments'] > 0]
-    inactive = pv_full[pv_full['n-comments'] == 0]
+# ──────────────────────────────────────────────────────────────
+# 0. Gurobi 雲端授權環境（依個人帳號修改）
+# ──────────────────────────────────────────────────────────────
+env = gp.Env(empty=True)
+env.setParam("WLSACCESSID", "a8b9fb6b-ed21-4eca-a559-be15569076fa")
+env.setParam("WLSSECRET",   "61a677bd-d8b1-47e4-a557-68147ca6ff59")
+env.setParam("LICENSEID",   2636425)
+env.start()
 
-    # 抽樣 inactive
-    sampled_inactive = inactive.sample(n=sample_from_inactive, random_state=42)
 
-    # 合併
-    pv = pd.concat([active, sampled_inactive], ignore_index=True)
+# ──────────────────────────────────────────────────────────────
+# (A) 自動調組數 / 上限  ─ 放在檔案最前面即可
+# ──────────────────────────────────────────────────────────────
+def auto_adjust_group_params(n, m_init, S_min_init, S_max_init,
+                             prefer_fix_m=True):
+    """
+    確保 m*S_min <= n <= m*S_max。
+    若 n > m*S_max：優先增加 m；若 prefer_fix_m=False，則擴大 S_max。
+    若 n < m*S_min：縮小 S_min。
+    """
+    import math
+    m, S_min, S_max = m_init, S_min_init, S_max_init
 
-    # 參與者資訊
+    if n > m * S_max:
+        if prefer_fix_m:
+            m = math.ceil(n / S_max)
+        else:
+            S_max = math.ceil(n / m)
+    if n < m * S_min:
+        S_min = max(1, math.floor(n / m))
+
+    return m, S_min, S_max
+
+
+
+# ──────────────────────────────────────────────────────────────
+# 1. 資料讀取（稀疏矩陣版本）
+# ──────────────────────────────────────────────────────────────
+def load_data_sparse(pv_path: str, cm_path: str):
+    pv = pd.read_csv(pv_path)
+    cm = pd.read_csv(cm_path)              # 目前程式碼未用到，可保留後續擴充
     participants = pv['participant'].tolist()
     n = len(participants)
 
-    # 投票稀疏矩陣：comment ID 欄位都是數字字串
     vote_cols = [c for c in pv.columns if c.isdigit()]
-    votes_sparse = csr_matrix(pv[vote_cols].fillna(0).astype(float).values)
+    votes_sparse = csr_matrix(pv[vote_cols].fillna(0).values)
+    A = cosine_similarity(votes_sparse)    # agreement
+    D = 1 - A                              # dissimilarity
 
-    # 相似度與距離矩陣
-    A = cosine_similarity(votes_sparse)
-    D = 1 - A
-
-    # Engagement 分數（評論數 + 投票數）
     E = (pv['n-comments'] + pv['n-votes']).values
-
-    # Sentiment score（正面、負面、中立）
     S = np.sign(pv['n-agree'] - pv['n-disagree']).astype(int)
-
-    # Commenter indicator
     C = (pv['n-comments'] > 0).astype(int)
-
     return participants, n, A, D, E, S, C
 
-# --- 2. Gurobi IP Solver with logging & timing ---
-def solve_ip(n, m, D, E, S_min, S_max, delta, eta, lambda1=1.0, lambda2=0.1):
-    t0 = time.perf_counter()
-    print("[IP-V3] Building model...")
-    model = Model()
+# ──────────────────────────────────────────────────────────────
+# 2. 根據資料動態標定 delta (多樣性上限) 與 eta (最低參與度)
+# ──────────────────────────────────────────────────────────────
+def calibrate_params(D: np.ndarray, E: np.ndarray,
+                     S_max: int, m: int,
+                     q: float = 0.85, eta_ratio: float = 0.7):
+    """回傳 (delta, eta) 兩個安全參數"""
+    pair_max = S_max * (S_max - 1) / 2
+    upper_d = np.quantile(D[np.triu_indices_from(D, k=1)], q)
+    delta = upper_d * pair_max
+
+    eta = eta_ratio * E.sum() / m
+    return delta, eta
+
+# ──────────────────────────────────────────────────────────────
+# 3-1. Integer Programming (IP) 解
+# ──────────────────────────────────────────────────────────────
+def solve_ip(n, m, D, E, S_min, S_max, delta, eta,
+             lambda1=1.0, lambda2=0.1):
+    model = Model(env=env)
     x = model.addVars(n, m, vtype=GRB.BINARY, name="x")
 
-    # --- Objective Function ---
-    diversity = QuadExpr()
-    for j in range(m):
-        for i in range(n):
-            for k in range(i + 1, n):
-                diversity.add(D[i, k] * x[i, j] * x[k, j])
-
+    # ── 目標函數 ───────────────────────────────────────────
+    diversity = quicksum(
+        D[i, k] * x[i, j] * x[k, j]
+        for j in range(m)
+        for i in range(n) for k in range(i + 1, n)
+    )
     avgE = E.sum() / m
-    varE = QuadExpr()
-    for j in range(m):
-        lin = quicksum(E[i] * x[i, j] for i in range(n)) - avgE
-        varE.add(lin * lin)
-
+    varE = quicksum(
+        (quicksum(E[i] * x[i, j] for i in range(n)) - avgE) *
+        (quicksum(E[i] * x[i, j] for i in range(n)) - avgE)
+        for j in range(m)
+    )
     model.setObjective(lambda1 * diversity - lambda2 * varE, GRB.MAXIMIZE)
 
-    # --- Constraints ---
-
-    # (1) Unique Assignment
+    # ── 約束式 ─────────────────────────────────────────────
     for i in range(n):
-        model.addConstr(x.sum(i, '*') == 1, name=f"assign_{i}")
+        model.addConstr(x.sum(i, '*') == 1)
 
-    # (2) Group Size Bounds + Odd Cardinality
-    y = model.addVars(m, vtype=GRB.INTEGER, lb=0, name="y")  # For odd check
+    y = model.addVars(m, vtype=GRB.INTEGER, lb=0, name="y")
     for j in range(m):
         size = x.sum('*', j)
-        model.addConstr(size >= S_min, name=f"size_min_{j}")
-        model.addConstr(size <= S_max, name=f"size_max_{j}")
-        model.addConstr(size - 1 == 2 * y[j], name=f"odd_size_{j}")
-
-    # (3) Intra-group Diversity Upper Bound
-    for j in range(m):
-        div = QuadExpr()
-        for i in range(n):
-            for k in range(i + 1, n):
-                div.add(D[i, k] * x[i, j] * x[k, j])
-        model.addQConstr(div <= delta, name=f"diversity_max_{j}")
-
-    # (4) Minimum Group Engagement
-    for j in range(m):
+        model.addConstr(size >= S_min)
+        model.addConstr(size <= S_max)
+        model.addConstr(size - 1 == 2 * y[j])
+        div = quicksum(
+            D[i, k] * x[i, j] * x[k, j]
+            for i in range(n) for k in range(i + 1, n)
+        )
+        model.addQConstr(div <= delta)
         eng = quicksum(E[i] * x[i, j] for i in range(n))
-        model.addConstr(eng >= eta, name=f"engagement_min_{j}")
+        # model.addConstr(eng >= eta)
 
-    print(f"[IP-V3] Model built: {model.NumVars} vars, {model.NumConstrs} constrs")
-    print("[IP-V3] Starting optimization...")
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
-    print(f"[IP-V3] Optimization complete. ObjVal = {model.ObjVal:.4f}")
+
+    if model.Status == GRB.INFEASIBLE:
+        print("Model is infeasible. Computing IIS...")
+        model.computeIIS()
+        model.write("model.ilp")  # Save IIS to a file for inspection
+        raise RuntimeError("IP infeasible. IIS written to 'model.ilp'.")
+
+    if model.Status != GRB.OPTIMAL:
+        raise RuntimeError("IP infeasible (status {})".format(model.Status))
+
     sol = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
-    assign = sol.argmax(axis=1)
-    t1 = time.perf_counter()
-    return assign, t1 - t0
+    return sol.argmax(axis=1), model.ObjVal
 
-
-# --- 3. LP Relaxation + Rounding with logging & timing ---
-def solve_lp_rounding(n, m, D, E, S_min, S_max, delta, eta, lambda1=1.0, lambda2=0.1):
-    t0 = time.perf_counter()
-    print("[LP-V3] Building model...")
-    model = Model()
+# ──────────────────────────────────────────────────────────────
+# 3-2. LP Relaxation + Rounding
+# ──────────────────────────────────────────────────────────────
+def solve_lp_rounding(n, m, D, E, S_min, S_max, delta, eta,
+                      lambda1=1.0, lambda2=0.1):
+    model = Model(env=env)
     x = model.addVars(n, m, lb=0, ub=1, name="x")
 
-    # Objective
-    diversity = QuadExpr()
-    for j in range(m):
-        for i in range(n):
-            for k in range(i + 1, n):
-                diversity.add(D[i, k] * x[i, j] * x[k, j])
+    # 目標函數同上
+    diversity = quicksum(
+        D[i, k] * x[i, j] * x[k, j]
+        for j in range(m)
+        for i in range(n) for k in range(i + 1, n)
+    )
     avgE = E.sum() / m
-    varE = QuadExpr()
-    for j in range(m):
-        lin = quicksum(E[i] * x[i, j] for i in range(n)) - avgE
-        varE.add(lin * lin)
-
+    varE = quicksum(
+        (quicksum(E[i] * x[i, j] for i in range(n)) - avgE) *
+        (quicksum(E[i] * x[i, j] for i in range(n)) - avgE)
+        for j in range(m)
+    )
     model.setObjective(lambda1 * diversity - lambda2 * varE, GRB.MAXIMIZE)
 
-    # Constraints
+    # 約束式（無奇數強制）
     for i in range(n):
-        model.addConstr(x.sum(i, '*') == 1, name=f"assign_{i}")
+        model.addConstr(x.sum(i, '*') == 1)
     for j in range(m):
         size = x.sum('*', j)
-        model.addConstr(size >= S_min, name=f"size_min_{j}")
-        model.addConstr(size <= S_max, name=f"size_max_{j}")
-        div = QuadExpr()
-        for i in range(n):
-            for k in range(i + 1, n):
-                div.add(D[i, k] * x[i, j] * x[k, j])
-        model.addQConstr(div <= delta, name=f"diversity_max_{j}")
+        model.addConstr(size >= S_min)
+        model.addConstr(size <= S_max)
+        div = quicksum(
+            D[i, k] * x[i, j] * x[k, j]
+            for i in range(n) for k in range(i + 1, n)
+        )
+        model.addQConstr(div <= delta)
         eng = quicksum(E[i] * x[i, j] for i in range(n))
-        model.addConstr(eng >= eta, name=f"engagement_min_{j}")
+        # model.addConstr(eng >= eta)
 
-    print(f"[LP-V3] Model built: {model.NumVars} vars, {model.NumConstrs} constrs")
-    print("[LP-V3] Starting optimization...")
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
-    print(f"[LP-V3] Optimization complete. ObjVal = {model.ObjVal:.4f}")
-    sol = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
-    assign = sol.argmax(axis=1)
-    t1 = time.perf_counter()
-    return assign, t1 - t0
+    if model.Status not in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
+        raise RuntimeError("LP infeasible (status {})".format(model.Status))
 
+    # 簡單最大值 round（可改進為 max-prob 或隨機取樣）
+    frac = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
+    assign = frac.argmax(axis=1)
+    return assign, model.ObjVal
 
-# --- 4. Greedy Local Search Heuristic with logging & timing ---
-def heuristic_greedy(n, m, A, D, E, S, C, S_min, S_max):
-    t0 = time.perf_counter()
-    print("[Heuristic] Starting greedy assignment...")
+# ──────────────────────────────────────────────────────────────
+# 3-3. Heuristic：隨機啟發 + local search
+# ──────────────────────────────────────────────────────────────
+def heuristic_greedy(n, m, A, D, E, S, C, S_min, S_max,
+                     max_iter: int = 200):
+    # 隨機初始分派
     assign = np.random.choice(m, size=n)
     counts = np.bincount(assign, minlength=m)
-    # Repair for size constraints
+
+    # 修復組別大小
     for j in range(m):
         while counts[j] < S_min:
             i = np.random.choice(np.where(counts[assign] > S_min)[0])
@@ -209,69 +197,95 @@ def heuristic_greedy(n, m, A, D, E, S, C, S_min, S_max):
             i = np.random.choice(np.where(assign == j)[0])
             newj = np.random.choice([g for g in range(m) if counts[g] < S_max])
             assign[i] = newj
-            counts[j] -= 1; counts[newj] += 1
-    print("[Heuristic] Initial feasible assignment done.")
-    # Local search
-    def obj_val(a):
+            counts[j] -= 1
+            counts[newj] += 1
+
+    # ⟨簡易⟩ 目標：最大化組內 agreement 總和
+    def obj(a):
         val = 0.0
         for j in range(m):
-            idxs = np.where(a == j)[0]
-            for u in idxs:
-                for v in idxs:
-                    val += A[u, v]
+            idx = np.where(a == j)[0]
+            val += A[np.ix_(idx, idx)].sum()
         return val
-    improved = True
-    while improved:
-        improved = False
-        base = obj_val(assign)
-        for i in range(n):
-            orig = assign[i]
-            for j in range(m):
-                if j == orig: continue
-                candidate = assign.copy()
-                candidate[i] = j
-                if obj_val(candidate) > base:
-                    assign = candidate
-                    improved = True
-                    break
-            if improved: break
-    print("[Heuristic] Local search complete.")
-    t1 = time.perf_counter()
-    return assign, t1 - t0
 
-# --- 5. Metrics Calculation ---
+    best = assign.copy()
+    best_val = obj(best)
+    for _ in range(max_iter):
+        i = np.random.randint(n)
+        cand = best.copy()
+        cand[i] = np.random.randint(m)
+        if counts[cand[i]] >= S_max or counts[best[i]] <= S_min:
+            continue
+        cand_val = obj(cand)
+        if cand_val > best_val:
+            best, best_val = cand, cand_val
+    return best, best_val
+
+# ──────────────────────────────────────────────────────────────
+# 4. 指標計算
+# ──────────────────────────────────────────────────────────────
 def compute_metrics(assign, A, D, E):
     m = assign.max() + 1
-    intra = sum(A[i, k] for i in range(len(assign)) for k in range(len(assign)) if assign[i] == assign[k])
-    inter = sum(D[i, k] for i in range(len(assign)) for k in range(len(assign)) if assign[i] != assign[k])
+    intra = sum(A[i, k] for i in range(len(assign))
+                           for k in range(len(assign))
+                           if assign[i] == assign[k])
+    inter = sum(D[i, k] for i in range(len(assign))
+                           for k in range(len(assign))
+                           if assign[i] != assign[k])
     es = [E[assign == j].sum() for j in range(m)]
-    varE = np.var(es)
-    return {'intra_agreement': intra, 'inter_polarization': inter, 'engagement_var': varE}
+    return dict(intra_agreement=intra,
+                inter_polarization=inter,
+                engagement_var=np.var(es))
 
-# --- 6. Experiment Runner with timing comparison ---
-def run_experiments(pv_path, cm_path):
-    participants, n, A, D, E, S, C = load_data_sparse_subsample(pv_path, cm_path, sample_from_inactive=0)
-    # Settings
-    m, S_min, S_max, delta, theta = 2, 5, 15, 10.0, 1
+# ──────────────────────────────────────────────────────────────
+# 5. 主要實驗流程（修正版）
+# ──────────────────────────────────────────────────────────────
+def run_experiments(pv_path='participants-votes.csv',
+                    cm_path='comments.csv'):
+
+    # ① 先讀資料 → 才拿得到 n、A、D、E …
+    participants, n, A, D, E, S, C = load_data_sparse(pv_path, cm_path)
+
+    # ② 自動調組數 / 上限 (不要在這之後再覆寫!)
+    m_init, S_min_init, S_max_init = 2, 5, 15
+    m, S_min, S_max = auto_adjust_group_params(
+        n, m_init, S_min_init, S_max_init, prefer_fix_m=True)
+    print(f"[Info] n={n}, m={m}, S_min={S_min}, S_max={S_max}")
+
+    # ③ 依調整後的 m、S_max 重新算 δ、η
+    delta, eta = calibrate_params(D, E, S_max, m)
+    print(f"[Info] delta={delta:.4f}, eta={eta:.4f}")
+
+    # ④ 定義各方法
     methods = {
-        # 'IP':      lambda: solve_ip(n, m, A, D, E, S, C, S_min, S_max, delta, theta),
-        'IP': lambda: solve_ip(n, m, D, E, S_min, S_max, delta, theta),
-        # 'LP':      lambda: solve_lp_rounding(n, m, A, D, E, S, C, S_min, S_max, delta, theta),
-        'LP':      lambda: solve_lp_rounding(n, m, D, E, S_min, S_max, delta, theta),
-        'Heuristic': lambda: heuristic_greedy(n, m, D, E, S_min, S_max)
+        # 'Heuristic': lambda: heuristic_greedy(
+        #     n, m, A, D, E, S, C, S_min, S_max)[0],
+        'IP': lambda: solve_ip(
+            n, m, D, E, S_min, S_max, delta, eta)[0],
+        'LP': lambda: solve_lp_rounding(
+            n, m, D, E, S_min, S_max, delta, eta)[0]
     }
+
+    # ⑤ 跑實驗 & 摘要
     records = []
     for name, fn in methods.items():
-        print(f"\n===== Running {name} =====")
-        assign, elapsed = fn()
-        print(f"[{name}] Elapsed time: {elapsed:.2f} sec")
+        print(f"\n===== {name} =====")
+        t0 = time.perf_counter()
+        assign = fn()
+        elapsed = time.perf_counter() - t0
         metrics = compute_metrics(assign, A, D, E)
         metrics['time_sec'] = elapsed
         records.append((name, metrics))
-    df = pd.DataFrame({name: vals for name, vals in records}).T
-    print("\n===== Summary =====")
-    print(df)
-    return df
+        print(f"{name} finished in {elapsed:.2f}s, metrics → {metrics}")
 
+    summary = pd.DataFrame({k: v for k, v in records}).T
+    print("\n===== Summary =====")
+    print(summary)
+    return summary
+
+
+# ──────────────────────────────────────────────────────────────
+# 6. CLI
+# ──────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     run_experiments('participants-votes.csv', 'comments.csv')
