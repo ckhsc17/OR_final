@@ -1,10 +1,11 @@
 %! suppress = UnresolvedReference
-\documentclass[11pt,a4paper]{article}
-
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{microtype}
 % for Chinese
 \usepackage{fontspec}
 \newfontfamily\chinesefont{Heiti TC} % Font for Chinese
-
 % useful packages
 \usepackage{amsmath}
 \usepackage{textcomp}
@@ -19,10 +20,25 @@
 \usepackage{hyperref}
 \usepackage[capitalize]{cleveref}
 \usepackage{amsfonts}
-\usepackage[backend=biber,style=alphabetic]{biblatex}
 \usepackage{csquotes}
-\addbibresource{references.bib}
+\usepackage[backend=biber, style=authoryear]{biblatex}
+% Don't print the URL field as a separate line
+\DeclareFieldFormat{url}{}
+\renewbibmacro*{url+urldate}{} % suppress URL printing block entirely
+\renewbibmacro*{doi+eprint+url}{}
+\DeclareFieldFormat{title}{% make the title link to the URL (instead of printing url)
+  \iffieldundef{url}
+    {\iffieldundef{doi}
+      {\mkbibemph{#1}}%
+      {\href{https://doi.org/\thefield{doi}}{\mkbibemph{#1}}}}%
+    {\href{\thefield{url}}{\mkbibemph{#1}}}}
 
+% Override macro used in article/proceeding entries
+\renewbibmacro*{title+year}{%
+  \printfield{title}%
+  \setunit*{\addspace}%
+\printtext[parens]{\printfield{year}}}
+\addbibresource{references.bib}
 
 
 % basic settings
@@ -32,7 +48,7 @@
 \footnotesep=5mm
 
 \title{Optimizing Consensus Building in vTaiwan Using Integer Programming \\
-\large Operations Research, Spring 2025 (113-2) \\ Group M Final Project Proposal}
+\large Operations Research, Spring 2025 (113-2) \\ Group M}
 
 \author{b09607059 {\chinesefont 蔡宜芳}, b12705014 {\chinesefont 陳泊華},
     b12705027 {\chinesefont 徐郁翔}, T13H06312 Philip, T13H06303 Kuehnel Paul}
@@ -41,18 +57,15 @@
 \begin{document}
 \maketitle
 
-
-\begin{abstract}
-
-\centering
-This paper formulates and solves an optimization problem for assigning participants
-in the vTaiwan process to deliberative groups.
-We balance intra-group diversity, stakeholder fairness, and engagement,
-while adhering to theoretically grounded group size constraints.
-
-\end{abstract}
-
-\newpage
+% Remove abstract to save space
+%\begin{abstract}
+%\centering
+%This paper formulates and solves an optimization problem for assigning participants
+%in the vTaiwan process to deliberative groups.
+%We balance intra-group diversity, stakeholder fairness, and engagement,
+%while adhering to theoretically grounded group size constraints.
+%\end{abstract}
+%\newpage
 
 \section{Introduction}\label{sec:intro}
 \input{introduction}
@@ -63,8 +76,9 @@ while adhering to theoretically grounded group size constraints.
 \section{Problem Formulation}\label{sec:problem_formulation}
 \input{problem-formulation}
 
-\section{Summary and Design Justifications}\label{sec:design}
-\input{design-justifications}
+% I guess we don't have enough space for this section, and its not critical.
+%\section{Summary and Design Justifications}\label{sec:design}
+%\input{design-justifications}
 
 \section{Solution Approach}\label{sec:solution}
 \input{solution-approach}

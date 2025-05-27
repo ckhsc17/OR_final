@@ -7,7 +7,7 @@ Let:
     \item $D(i,k)$: Diversity score between participants $i$ and $k$.\\(e.g., ideological distance.)
     \item $E(i)$: Engagement score of participant $i$.\\(e.g., number of distinct issues voted on.)
     \item $x_{ij} \in \{0,1\}$: Indicating whether participant $i$ is assigned to group $j$.
-    \item $y_{jl} \in \{0,1\}$: Indicating whether group $j$ has size $l \in \{5,7,9,11,13\}$.
+    \item $y_{jl} \in \{0,1\}$: Indicating whether group $j$ has size $l \in \{3,5,7,9,11,13\}$.
     \item $z_j \geq 0$: Auxiliary variable representing the absolute deviation of group $j$’s engagement from the target $\bar{E}$.
     \item $d_j \in \{0,1\}$: Binary variable indicating whether group $j$ is dominated by any stakeholder group.
 \end{itemize}
@@ -33,53 +33,52 @@ We formulate a composite objective that balances intra-group diversity and engag
 \]
 
 \noindent
-\textbf{(A) Intra-group Diversity:}\\
+\textbf{(A) Intra-group Diversity:}\\[3pt]
 Rewards group compositions that contain participants with a range of differing perspectives.
 Diversity scores \(D(i,k)\) are precomputed based on ideological dissimilarity or voting disagreement.
 \\
-\textbf{(B) Engagement Imbalance:}\\
+\textbf{(B) Engagement Imbalance:}\\[3pt]
 Penalizes uneven distribution of participant engagement across groups by minimizing the total absolute deviation
 from a target engagement level \(\bar{E}\).
 \\
-\textbf{Hyperparameter Tuning:}\\
+\textbf{Hyperparameter Tuning:}\\[3pt]
 To interpret and calibrate \(\lambda_1\) and \(\lambda_2\), we analyze the individual objective components (A)
 and (B) independently.
 Each term is normalized (e.g., via max-min or standard deviation scaling)
 to ensure their relative importance is interpretable and tunable.
 
 \subsection*{Constraints}
-\\
-\textbf{(1) Unique Assignment}\\
+\textbf{(1) Unique Assignment}\\[3pt]
 Each participant must be assigned to exactly one group:
 \[
 \sum_{j \in G} x_{ij} = 1 \quad \forall i \in P
 \]
 \\
-\textbf{(2) Discrete Group Sizes}\\
-Each group must have a size from the set \(\{5,7,9,11,13\}\).
+\textbf{(2) Discrete Group Sizes}\\[3pt]
+Each group must have a size from the set \(\{3,5,7,9,11,13\}\).
 We enforce this using:
 \begin{gather*}
     s_j = \sum_{i \in P} x_{ij} \quad \forall j \in G\\
-    \sum_{l \in \{5,7,9,11,13\}} y_{jl} = 1 \quad \forall j \in G\\
-    s_j = \sum_{l \in \{5,7,9,11,13\}} l \cdot y_{jl} \quad \forall j \in G\\
+    \sum_{l \in \{3,5,7,9,11,13\}} y_{jl} = 1 \quad \forall j \in G\\
+    s_j = \sum_{l \in \{3,5,7,9,11,13\}} l \cdot y_{jl} \quad \forall j \in G
 \end{gather*}
-\textbf{(3) Diversity Threshold}\\
+\textbf{(3) Diversity Threshold}\\[3pt]
 To avoid excessive internal conflict, each group’s diversity must not exceed a maximum threshold:
 \[
 \sum_{i < k} D(i,k)\,x_{ij} x_{kj} \leq \delta \quad \forall j \in G
 \]
-\textbf{(4) Minimum Engagement per Group}\\
+\textbf{(4) Minimum Engagement per Group}\\[3pt]
 Each group must contain a minimum total engagement score:
 \[
 \sum_{i \in P} E(i)\,x_{ij} \geq \eta \quad \forall j \in G
 \]
-\textbf{(5) Engagement Deviation Linearization}\\
+\textbf{(5) Engagement Deviation Linearization}\\[3pt]
 We define the absolute deviation of each group’s engagement from the target \(\bar{E}\) using auxiliary variables:
 \begin{gather*}
     \sum_{i \in P} E(i)\,x_{ij} - \bar{E} \leq z_j \quad \forall j \in G\\
     \bar{E} - \sum_{i \in P} E(i)\,x_{ij} \leq z_j \quad \forall j \in G\\
 \end{gather*}
-\textbf{(6) Stakeholder Dominance Control}\\
+\textbf{(6) Stakeholder Dominance Control}\\[3pt]
 To prevent any stakeholder group from dominating too many groups, we restrict the number of groups
 in which more than a threshold fraction \(\alpha\) of members come from the same stakeholder group.
 
@@ -97,14 +96,13 @@ Where:
     \item \(M\): Large constant (e.g., \(M = 13\)) to linearize the conditional logic
     \item \(\gamma\): Maximum of allowed dominated groups (e.g., \(\gamma = \lceil 0.05 \cdot |G| \rceil\))
 \end{itemize}
-
+\noindent
 \subsection*{Constraint Threshold Calibration}
-\\
-\textbf{Diversity Threshold \(\delta\):}\\
+\textbf{Diversity Threshold \(\delta\):}\\[3pt]
 Empirically selected from the distribution of intra-group diversity scores in observed or simulated groupings.
 Typical values include the 75th or 90th percentile of feasible groupings.
-\\
-\textbf{Engagement Threshold \(\eta\):}\\
+\noindent
+\textbf{Engagement Threshold \(\eta\):}\\[3pt]
 Derived from desired minimum engagement per group.
 For example, if three highly active participants per group are desired,
 set \(\eta = 3 \cdot \bar{E}_{\text{individual}}\).
@@ -114,7 +112,7 @@ set \(\eta = 3 \cdot \bar{E}_{\text{individual}}\).
 To improve scalability, we relax the binary and discrete constraints as follows:
 \begin{itemize}
     \item Assignment variables: \quad $x_{ij} \in \{0,1\}$ is relaxed to $x_{ij} \in [0,1]$.
-    \item Group sizes: \quad $s_j \in \{5,7,9,11,13\}$ is relaxed to $5 \leq s_j \leq 13$.
+    \item Group sizes: \quad $s_j \in \{3,5,7,9,11,13\}$ is relaxed to $5 \leq s_j \leq 13$.
     \item Dominance indicators: \quad $d_j \in \{0,1\}$ can be relaxed to $d_j \in [0,1]$ in LP versions with appropriate rounding afterward.
 \end{itemize}
 We may apply rounding and post-processing to recover feasible integral solutions from the relaxed model.
