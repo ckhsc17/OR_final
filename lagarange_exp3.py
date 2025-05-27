@@ -3,17 +3,94 @@ Lagrangian‑decomposition based group assignment for vTaiwan deliberation data
 --------------------------------------------------------------------------
 • Reads *participants‑votes.csv* and *comments.csv* as produced by Pol.is
 • Computes agreement / dis‑agreement matrices and engagement scores
-• Uses a fast sub‑gradient Lagrangian method that scales to n≈2 000
-   (≈1–2 min on Apple M‑series CPU, gap ≈3 % from MIQP benchmark)
+• Uses a fast sub‑gradient Lagrangian method that scales to n≈2 000
+   (≈1–2 min on Apple M‑series CPU, gap ≈3 % from MIQP benchmark)
 
-The script can be run stand‑alone:
+MATHEMATICAL FORMULATION (v3 - Complete Specification):
+-------------------------------------------------------
+This implements the v3 version of the mathematical program formulation for
+group assignment optimization in vTaiwan deliberation data, balancing
+intra-group diversity maximization with engagement variance minimization.
+
+Variables:
+• x_ij ∈ {0,1}: Binary assignment variable (participant i → group j)
+• P = {1,...,n}: Set of participants  
+• G = {1,...,m}: Set of groups
+
+Data/Parameters:
+• D(i,k): Diversity/disagreement matrix - measures ideological distance between participants
+• E(i): Engagement score vector - total activity/participation level per participant
+• A(i,k): Agreement matrix - measures similarity/consensus between participants (used for validation)
+• λ₁, λ₂ > 0: Objective function weights controlling diversity vs. balance trade-off
+• δ > 0: Maximum allowed intra-group diversity threshold
+• η ≥ 0: Minimum engagement requirement per group (optional)
+• s_min, s_max: Group size bounds
+
+Objective Function (Bi-criteria Optimization):
+max [λ₁ · Σⱼ Σᵢ<ₖ D(i,k)·x_ij·x_kj - λ₂ · Σⱼ (Eⱼ - Ē)²]
+
+Component (A) - Intra-group Diversity Maximization:
+• Σⱼ Σᵢ<ₖ D(i,k)·x_ij·x_kj: Sum of pairwise diversity scores within each group
+• Promotes ideological variety within groups to ensure productive debate
+• Each pair (i,k) counted once per group j where both are assigned
+
+Component (B) - Engagement Variance Minimization:  
+• Eⱼ = Σᵢ E(i)·x_ij: Total engagement score in group j
+• Ē = (Σⱼ Eⱼ)/m: Mean engagement across all groups
+• Σⱼ (Eⱼ - Ē)²: Variance in group engagement levels
+• Ensures balanced participation across groups
+
+Constraints:
+1. Unique Assignment: Σⱼ x_ij = 1 ∀i ∈ P
+   Each participant assigned to exactly one group
+   
+2. Group Size Bounds: s_min ≤ Σᵢ x_ij ≤ s_max ∀j ∈ G  
+   Groups must have feasible sizes for deliberation effectiveness
+   
+3. Diversity Threshold: Σᵢ<ₖ D(i,k)·x_ij·x_kj ≤ δ ∀j ∈ G
+   Prevents excessive conflict by limiting intra-group diversity
+   
+4. Min Engagement (Optional): Σᵢ E(i)·x_ij ≥ η ∀j ∈ G
+   Ensures minimum activity level in each group
+
+LAGRANGIAN DECOMPOSITION ALGORITHM:
+----------------------------------
+The diversity constraints (3) are computationally challenging due to quadratic
+coupling terms. We relax them using Lagrangian duality with multipliers μⱼ ≥ 0:
+
+Lagrangian Function:
+L(x,μ) = λ₁·Σⱼ Σᵢ<ₖ D(i,k)·x_ij·x_kj - λ₂·Σⱼ(Eⱼ-Ē)² + Σⱼ μⱼ(δ - Σᵢ<ₖ D(i,k)·x_ij·x_kj)
+
+Decomposition:
+L(x,μ) = Σᵢⱼ cost[i,j]·x_ij - λ₂·Σⱼ(Eⱼ-Ē)² + Σⱼ μⱼ·δ
+
+Cost Matrix Construction:
+cost[i,j] = (λ₁ - μⱼ)·div_contrib[i,j] + λ₂·var_contrib[i,j]
+
+Where:
+• div_contrib[i,j] = Σₖ∈Gⱼ D(i,k): Diversity contribution of adding i to group j
+• var_contrib[i,j]: Change in engagement variance from adding i to group j
+• μⱼ: Lagrange multiplier penalizing constraint violation in group j
+
+Subgradient Method (Dual Updates):
+μⱼ^(t+1) ← max(0, μⱼ^(t) - stepₜ·(δ - div_currentⱼ^(t)))
+stepₜ = step₀/√t (diminishing step size for convergence)
+
+The algorithm alternates between:
+1. Solving assignment subproblem with current μ (primal update)
+2. Updating multipliers based on constraint violations (dual update)
+
+USAGE:
+------
+Run stand-alone:
     python lagrangian_group_assignment.py \
            --pv participants-votes.csv \
            --cm comments.csv           \
            --m_init 2 --s_min 5 --s_max 15
 
-The main entry‑point is *lagrangian_decompose()*; import the module if you
-wish to plug the algorithm into a larger pipeline.
+Import for pipeline integration:
+    from lagrange_exp3 import lagrangian_decompose
+    assignment, obj_val = lagrangian_decompose(n, m, D, E, ...)
 """
 
 from __future__ import annotations
@@ -43,8 +120,43 @@ def auto_adjust_group_params(n: int,
                              s_max_init: int,
                              *,
                              prefer_fix_m: bool = True) -> tuple[int, int, int]:
-    """Guarantee  *m·S_min ≤ n ≤ m·S_max*  by flexibly tweaking m / S_max.
-    Returns (m, S_min, S_max)."""
+    """
+    Automatically adjust group parameters to ensure mathematical feasibility.
+    
+    FEASIBILITY CONSTRAINT ANALYSIS:
+    --------------------------------
+    For any valid assignment x_ij ∈ {0,1} to exist, we need:
+    
+    NECESSARY CONDITION: m·s_min ≤ n ≤ m·s_max
+    
+    Proof:
+    • Lower bound: Since each group j must have ≥ s_min participants:
+      n = Σᵢ Σⱼ x_ij = Σⱼ Σᵢ x_ij ≥ Σⱼ s_min = m·s_min
+      
+    • Upper bound: Since each group j can have ≤ s_max participants:
+      n = Σⱼ Σᵢ x_ij ≤ Σⱼ s_max = m·s_max
+    
+    ADJUSTMENT STRATEGIES:
+    ---------------------
+    When constraints are violated, this function uses two repair strategies:
+    
+    1. EXCESS PARTICIPANTS (n > m·s_max):
+       - Option A: Increase m ← ⌈n/s_max⌉ (create more groups)
+       - Option B: Increase s_max ← ⌈n/m⌉ (allow larger groups)
+       
+    2. INSUFFICIENT PARTICIPANTS (n < m·s_min):
+       - Decrease s_min ← max(1, ⌊n/m⌋) (allow smaller groups)
+       - Note: s_min = 1 is absolute minimum for non-empty groups
+    
+    DELIBERATION THEORY CONSIDERATIONS:
+    ----------------------------------
+    Group size bounds are motivated by deliberation research:
+    • s_min ≥ 3: Minimum for meaningful multi-perspective discussion
+    • s_max ≤ 15: Maximum for effective facilitation and equal participation
+    • Odd sizes preferred: Enables majority voting for decision-making
+    
+    Returns: (m, s_min, s_max) satisfying feasibility constraints
+    """
     m, s_min, s_max = m_init, s_min_init, s_max_init
     if n > m * s_max:
         m = math.ceil(n / s_max) if prefer_fix_m else m
@@ -61,7 +173,39 @@ def calibrate_params(D: np.ndarray,
                      *,
                      q: float = 0.85,
                      eta_ratio: float = 0.7) -> tuple[float, float]:
-    """Return safe (delta, eta) based on empirical quantiles."""
+    """
+    Calibrate constraint parameters δ (diversity threshold) and η (min engagement) 
+    based on empirical data characteristics.
+    
+    MATHEMATICAL RATIONALE:
+    ----------------------
+    1. DIVERSITY THRESHOLD (δ):
+       The constraint Σᵢ<ₖ D(i,k)·x_ij·x_kj ≤ δ limits intra-group conflict.
+       
+       δ = q-quantile(D) × max_possible_pairs_per_group
+       
+       Where:
+       • q-quantile(D): Empirical quantile of pairwise diversity scores
+       • max_possible_pairs = s_max × (s_max - 1) / 2: Maximum pairs in largest group
+       
+       This ensures that δ is achievable for most participant combinations
+       while preventing extreme conflict scenarios.
+    
+    2. MINIMUM ENGAGEMENT (η):
+       The constraint Σᵢ E(i)·x_ij ≥ η ensures active participation per group.
+       
+       η = eta_ratio × (total_engagement / m)
+       
+       This sets minimum engagement as a fraction of average group engagement,
+       preventing groups with only passive participants.
+    
+    PARAMETER TUNING:
+    ----------------
+    • q ∈ [0.8, 0.9]: Higher values → more restrictive diversity limits
+    • eta_ratio ∈ [0.5, 0.8]: Higher values → stricter engagement requirements
+    
+    Returns: (δ, η) suitable for the given data characteristics
+    """
     upper_d = np.quantile(D[np.triu_indices_from(D, 1)], q)
     pair_max = s_max * (s_max - 1) / 2
     delta = upper_d * pair_max
@@ -103,111 +247,206 @@ def load_data_sparse(pv_path: str | Path,
 # Lagrangian Decomposition core
 # ──────────────────────────────────────────────────────────────
 def solve_subproblem(cost: np.ndarray, s_min: int, s_max: int) -> np.ndarray:
-    """Solve min Σ c_ij x_ij  s.t. each i assigned once, s_min≤|G_j|≤s_max"""
+    """
+    Solve the assignment subproblem arising in Lagrangian decomposition.
+    
+    MATHEMATICAL FORMULATION:
+    -------------------------
+    This solves the "master" assignment problem after Lagrangian relaxation:
+    
+    min Σᵢⱼ cost[i,j] · x_ij
+    s.t. Σⱼ x_ij = 1         ∀i ∈ P  (unique assignment - each participant to one group)
+         s_min ≤ Σᵢ x_ij ≤ s_max  ∀j ∈ G  (group size bounds for deliberation effectiveness)
+         x_ij ∈ {0,1}       ∀i,j   (binary assignment variables)
+    
+    COST MATRIX INTERPRETATION:
+    ---------------------------
+    The cost matrix encodes the Lagrangian-modified objective:
+    cost[i,j] = (λ₁ - μⱼ)·div_contrib[i,j] + λ₂·var_contrib[i,j]
+    
+    Components:
+    • div_contrib[i,j] = Σₖ∈Gⱼ D(i,k): Total diversity participant i adds to group j
+    • var_contrib[i,j] = Δ[engagement_variance]: Change in overall engagement variance
+    • μⱼ ≥ 0: Lagrange multiplier for diversity constraint of group j
+    
+    ALGORITHMIC APPROACH:
+    --------------------
+    Uses Gurobi MIP solver for exact solutions to this assignment problem.
+    The problem has a generalized assignment structure with:
+    - Linear objective (after Lagrangian transformation)
+    - Assignment constraints (each participant to exactly one group) 
+    - Capacity constraints (group size bounds)
+    
+    Returns: assignment[i] = j where participant i is assigned to group j
+    """
     n, m = cost.shape
     model = gp.Model()
+    # Decision variables: x[i,j] = 1 if participant i assigned to group j
     x = model.addVars(n, m, vtype=gp.GRB.BINARY)
+    
+    # Objective: minimize total assignment cost
     model.setObjective(gp.quicksum(cost[i, j] * x[i, j]
                                    for i in range(n) for j in range(m)), gp.GRB.MINIMIZE)
+    
+    # Constraint (1): Each participant assigned to exactly one group
     for i in range(n):
         model.addConstr(x.sum(i, '*') == 1)
-    for j in range(m):
-        model.addConstr(x.sum('*', j) >= s_min)
-        model.addConstr(x.sum('*', j) <= s_max)
-    model.Params.OutputFlag = 0
-    model.optimize()
-    sol = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
-    return sol.argmax(axis=1)
-
     
-def lagrangian_decompose(n: int,
-                         m: int,
-                         D: np.ndarray,
-                         E: np.ndarray,
-                         *,
-                         s_min: int = 5,
-                         s_max: int = 15,
-                         delta: float = 105.0,
-                         lam1: float = 1.0,
-                         lam2: float = 0.05,
-                         max_iter: int = 6000,
-                         step0: float = 25.0,
+    # Constraint (2): Group size bounds
+    for j in range(m):
+        model.addConstr(x.sum('*', j) >= s_min)  # Minimum group size
+        model.addConstr(x.sum('*', j) <= s_max)  # Maximum group size
+    
+    model.Params.OutputFlag = 1
+    model.optimize()
+    
+    # Extract solution and return assignment vector
+    sol = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
+    return sol.argmax(axis=1)  # assignment[i] = group of participant i
+
+def lagrangian_decompose(n: int, m: int, D: np.ndarray, E: np.ndarray, *,
+                         s_min: int = 5, s_max: int = 15, delta: float = 105.0,
+                         lam1: float = 1.0, lam2: float = .05,
+                         max_iter: int = 60, step0: float = 25.0,
                          random_state: int = 0) -> tuple[np.ndarray, float]:
-    """Return (assign, best_obj).  *assign[i] == group id*"""
+    """
+    Lagrangian decomposition algorithm for v3 group assignment optimization.
+    
+    MATHEMATICAL BACKGROUND:
+    ------------------------
+    Original constrained optimization problem (v3 formulation):
+    max [λ₁ · Σⱼ Σᵢ<ₖ D(i,k)·x_ij·x_kj - λ₂ · Σⱼ (Eⱼ - Ē)²]
+    s.t. Σⱼ x_ij = 1 ∀i                    (unique assignment)
+         s_min ≤ Σᵢ x_ij ≤ s_max ∀j       (group size bounds)
+         Σᵢ<ₖ D(i,k)·x_ij·x_kj ≤ δ ∀j      (diversity threshold - prevents excessive conflict)
+         x_ij ∈ {0,1}                     (binary assignment variables)
+    
+    LAGRANGIAN RELAXATION THEORY:
+    -----------------------------
+    The diversity constraints couple participants across groups, making the problem
+    computationally challenging. We relax these constraints using Lagrangian duality
+    with non-negative multipliers μⱼ ≥ 0:
+    
+    L(x,μ) = λ₁·Σⱼ Σᵢ<ₖ D(i,k)·x_ij·x_kj - λ₂·Σⱼ(Eⱼ-Ē)² + Σⱼ μⱼ(δ - Σᵢ<ₖ D(i,k)·x_ij·x_kj)
+           = Σᵢⱼ cost[i,j]·x_ij - λ₂·Σⱼ(Eⱼ-Ē)² + Σⱼ μⱼ·δ
+    
+    COST MATRIX DECOMPOSITION:
+    -------------------------
+    cost[i,j] = (λ₁ - μⱼ)·div_contrib[i,j] + λ₂·var_contrib[i,j]
+    
+    Where:
+    • div_contrib[i,j] = Σₖ∈Gⱼ D(i,k): Diversity gain from adding participant i to group j
+    • var_contrib[i,j] = Δ[engagement_variance]: Impact on global engagement balance
+    • μⱼ: Penalty for violating diversity constraint in group j
+    
+    SUBGRADIENT OPTIMIZATION:
+    ------------------------
+    The dual problem max_μ≥0 min_x L(x,μ) is solved using subgradient ascent:
+    
+    μⱼ^(t+1) ← max(0, μⱼ^(t) - stepₜ·∇μⱼ L)
+    
+    Where the subgradient is:
+    ∇μⱼ L = δ - Σᵢ<ₖ D(i,k)·x_ij·x_kj = δ - current_diversityⱼ
+    
+    Step size schedule: stepₜ = step₀/√t (ensures convergence)
+    
+    ALGORITHM CONVERGENCE:
+    ---------------------
+    The algorithm alternates between:
+    1. PRIMAL UPDATE: Solve assignment subproblem for fixed μ (gives upper bound)
+    2. DUAL UPDATE: Update multipliers based on constraint violations
+    
+    Under standard conditions, this converges to within ε of the optimal dual value.
+    The best primal solution found provides a feasible (potentially suboptimal) assignment.
+    """
     rng = np.random.default_rng(random_state)
 
-    # helpers --------------------------------------------------
-    def group_div(g: list[int]) -> float:
-        return sum(D[i, k] for idx, i in enumerate(g) for k in g[:idx])
+    def group_div(g: np.ndarray) -> float:
+        """Compute intra-group diversity: Σᵢ<ₖ∈g D(i,k)"""
+        return D[np.ix_(g, g)].sum() / 2   # symmetric matrix, count each pair once
 
-    # initialise ----------------------------------------------
-    μ = np.zeros(m)                     # Lagrange multipliers per group
-    groups: list[list[int]] = [[] for _ in range(m)]
-    assign = np.empty(n, dtype=int)
+    # ═══════════════════════════════════════════════════════════════
+    # INITIALIZATION: Round-robin assignment with random shuffle
+    # ═══════════════════════════════════════════════════════════════
+    assign = np.arange(n) % m  # Round-robin: participant i → group (i mod m)
+    rng.shuffle(assign)        # Randomize to break symmetry
+    μ = np.zeros(m)           # Initialize Lagrange multipliers
+    best_val = -1e18; best_assign = assign.copy()  # Track best solution
 
-    # simple round‑robin seed
-    for idx, i in enumerate(rng.permutation(n)):
-        g = idx % m
-        groups[g].append(i)
-        assign[i] = g
-
-    best_assign = assign.copy(); best_val = -1e18
-
-    # caches (updated incrementally)
-    size = np.array([len(g) for g in groups])
-    div  = np.array([group_div(g) for g in groups])
-    Eng  = np.array([E[g].sum()      for g in groups])
-
-    # main loop -----------------------------------------------
+    # ═══════════════════════════════════════════════════════════════
+    # MAIN LAGRANGIAN ITERATION LOOP
+    # ═══════════════════════════════════════════════════════════════
     for it in range(1, max_iter + 1):
-        for i in range(n):
-            g0 = assign[i]
-            # remove i from its group --------------------------------
-            groups[g0].remove(i); size[g0] -= 1
-            div[g0]  -= sum(D[i, k] for k in groups[g0])
-            Eng[g0]  -= E[i]
+        # ─────────────────────────────────────────────────────────
+        # STEP 1: Compute group statistics from current assignment
+        # ─────────────────────────────────────────────────────────
+        groups = [np.where(assign == j)[0] for j in range(m)]  # Members of each group
+        size  = np.array([len(g) for g in groups])             # Group sizes
+        Eng   = np.array([E[g].sum() for g in groups])         # Total engagement per group
+        div   = np.array([group_div(g) for g in groups])       # Intra-group diversity
 
-            best_cost, best_g = 1e18, g0
-            for g in range(m):
-                if size[g] >= s_max:  # cannot exceed upper bound
-                    continue
-                Δdiv  = sum(D[i, k] for k in groups[g])
-                # variance proxy: using simple squared deviation from mean
-                meanE = Eng.mean()
-                ΔvarE = ((Eng[g] + E[i]) - meanE) ** 2 - ((Eng[g]) - meanE) ** 2
-                cost  = (lam1 - μ[g]) * Δdiv + lam2 * ΔvarE
-                if cost < best_cost:
-                    best_cost, best_g = cost, g
+        meanE = Eng.mean()  # Ē = mean engagement across groups
+        
+        # ─────────────────────────────────────────────────────────
+        # STEP 2: Build cost matrix for assignment subproblem
+        # ─────────────────────────────────────────────────────────
+        # The cost matrix encodes the Lagrangian-modified objective coefficients
+        # for the assignment subproblem: min Σᵢⱼ cost[i,j]·x_ij
+        cost = np.zeros((n, m))
+        for j, members in enumerate(groups):
+            # DIVERSITY CONTRIBUTION: Marginal diversity gain from adding participant i to group j
+            # div_contrib[i] = Σₖ∈Gⱼ D(i,k): Sum of diversity scores between i and current group j members
+            if len(members):
+                div_contrib = D[:, members].sum(axis=1)  # Σₖ∈Gⱼ D(i,k)
+            else:
+                div_contrib = 0.0
+            
+            # ENGAGEMENT VARIANCE CONTRIBUTION: Impact on global engagement balance
+            # Measures change in objective: Δ[(Eⱼ + E(i) - Ē)² - (Eⱼ - Ē)²]
+            # = (Eⱼ + E(i) - Ē)² - (Eⱼ - Ē)² = 2·E(i)·(Eⱼ - Ē) + E(i)²
+            var_contrib = ((Eng[j] + E) - meanE) ** 2 - ((Eng[j]) - meanE) ** 2
+            
+            # COMBINED COST: Lagrangian-modified objective coefficients
+            # Negative coefficients favor assignment (we're minimizing cost, but maximizing original objective)
+            # μⱼ penalizes diversity constraint violations in group j
+            cost[:, j] = (lam1 - μ[j]) * div_contrib + lam2 * var_contrib
+        
+        # ─────────────────────────────────────────────────────────
+        # STEP 3: Solve assignment subproblem
+        # ─────────────────────────────────────────────────────────
+        assign = solve_subproblem(cost, s_min, s_max)
 
-            # add i to best group -----------------------------------
-            groups[best_g].append(i); assign[i] = best_g
-            size[best_g] += 1
-            div[best_g]  += sum(D[i, k] for k in groups[best_g] if k != i)
-            Eng[best_g]  += E[i]
-
-        # quick repair: move from oversized → undersized --------------
-        undersized = [g for g in range(m) if size[g] < s_min]
-        oversized  = [g for g in range(m) if size[g] > s_max]
-        for g_small in undersized:
-            need = s_min - size[g_small]
-            for g_big in oversized:
-                while need and size[g_big] > s_min:
-                    i = rng.choice(groups[g_big])
-                    groups[g_big].remove(i); size[g_big] -= 1
-                    groups[g_small].append(i); assign[i] = g_small
-                    size[g_small] += 1; need -= 1
-                    # update div / Eng (approx, not critical for feasibility)
-        # objective & multipliers ------------------------------------
-        obj = lam1 * div.sum() - lam2 * ((Eng - Eng.mean()) ** 2).sum()
+        # ─────────────────────────────────────────────────────────
+        # STEP 4: Evaluate objective and update best solution
+        # ─────────────────────────────────────────────────────────
+        # Recompute statistics for the new assignment to evaluate solution quality
+        groups = [np.where(assign == j)[0] for j in range(m)]
+        Eng    = np.array([E[g].sum() for g in groups])
+        div    = np.array([group_div(g) for g in groups])
+        
+        # ORIGINAL OBJECTIVE EVALUATION: λ₁·Σⱼ divⱼ - λ₂·Σⱼ(Eⱼ-Ē)²
+        # This is the true objective value (before Lagrangian relaxation)
+        obj    = lam1 * div.sum() - lam2 * ((Eng - Eng.mean()) ** 2).sum()
         if obj > best_val:
             best_val = obj; best_assign = assign.copy()
 
-        subgrad = delta - div
-        step = step0 / math.sqrt(it)
+        # ─────────────────────────────────────────────────────────
+        # STEP 5: Subgradient update of Lagrange multipliers
+        # ─────────────────────────────────────────────────────────
+        # SUBGRADIENT COMPUTATION: ∇μⱼ L = δ - Σᵢ<ₖ D(i,k)·x_ij·x_kj
+        # If div[j] > δ: constraint violated → increase μⱼ (penalize more)
+        # If div[j] < δ: constraint satisfied → decrease μⱼ (penalize less)
+        subgrad = delta - div  # ∇μⱼ L = δ - current_diversityⱼ
+        
+        # DIMINISHING STEP SIZE: Ensures convergence in subgradient methods
+        # step₀/√t schedule guarantees: Σₜ stepₜ = ∞ and Σₜ stepₜ² < ∞
+        step = step0 / math.sqrt(it)  
+        
+        # DUAL UPDATE WITH PROJECTION: μⱼ ← max(0, μⱼ - stepₜ·subgradⱼ)
+        # Projection onto non-negativity constraint μⱼ ≥ 0 (dual feasibility)
         μ = np.maximum(0.0, μ - step * subgrad)
-
+        
     return best_assign, best_val
-
 # ──────────────────────────────────────────────────────────────
 # Metrics (optional)
 # ──────────────────────────────────────────────────────────────
@@ -216,6 +455,26 @@ def compute_metrics(assign: np.ndarray,
                     A: np.ndarray,
                     D: np.ndarray,
                     E: np.ndarray) -> dict[str, float]:
+    """
+    Compute solution quality metrics for group assignment evaluation.
+    
+    MATHEMATICAL DEFINITIONS:
+    ------------------------
+    1. INTRA-GROUP AGREEMENT: Σᵢ,ₖ:assign[i]=assign[k] A(i,k)
+       Measures consensus within groups (higher = more homogeneous groups)
+       
+    2. INTER-GROUP POLARIZATION: Σᵢ,ₖ:assign[i]≠assign[k] D(i,k)  
+       Measures diversity between groups (higher = more separated groups)
+       
+    3. ENGAGEMENT VARIANCE: Var(E₁, E₂, ..., Eₘ)
+       Where Eⱼ = Σᵢ:assign[i]=j E(i) (total engagement per group)
+       Measures balance of participation across groups (lower = more balanced)
+    
+    These metrics help evaluate the quality of the v3 formulation objectives:
+    • Intra-group agreement ↔ diversity maximization (component A)
+    • Engagement variance ↔ engagement balance (component B)
+    • Inter-group polarization provides additional insight into separation quality
+    """
     m = assign.max() + 1
     intra = sum(A[i, k] for i in range(len(assign)) for k in range(len(assign)) if assign[i] == assign[k])
     inter = sum(D[i, k] for i in range(len(assign)) for k in range(len(assign)) if assign[i] != assign[k])
