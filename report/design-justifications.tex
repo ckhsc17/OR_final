@@ -1,0 +1,29 @@
+\subsubsection*{Summary and Justification of Design Choices}
+
+This model balances ideological diversity and active participation in forming deliberative groups.
+Constraints enforce odd-sized group sizes, regulate stakeholder diversity, and ensure fairness in participant engagement.
+By integrating these factors into a single optimization framework, the model supports the formation of high-quality,
+balanced groups well-suited for productive democratic deliberation.
+Capping stakeholder dominance across groups safeguards against agenda capture
+and supports procedural fairness in group composition.
+
+\subsubsection*{Odd-Sized Groups}
+Group sizes are restricted to odd values in the set $\{5,7,9,11,13\}$ to avoid deadlocks in binary decisions
+and promote more inclusive, decisive deliberation~\parencite{menon2011oddgroups}.
+See also Section~\ref{subsec:group_sizes} for empirical justification.
+
+\subsubsection*{Promoting Diversity}
+The objective function rewards heterogeneous group compositions based on precomputed dissimilarity scores $D(i,k)$
+between participants. These scores can reflect ideological differences, issue preferences, or affective sentiment.
+
+\subsubsection*{Fair Stakeholder Representation}
+To avoid group capture by dominant interests, constraints limit the number of groups
+in which any stakeholder identity forms a majority. This is controlled via a per-group dominance threshold $\alpha$
+and a global cap $\gamma$ on the number of dominated groups.
+
+\subsubsection*{Balanced Engagement}
+Participants are scored using engagement metrics $E(i)$, reflecting prior activity (e.g., issues voted on, comments rated).
+The model distributes engagement levels evenly across groups by minimizing deviations from a global target $\bar{E}$.
+This helps prevent overconcentration of highly active users and encourages balanced group dynamics.
+
+

@@ -1,0 +1,53 @@
+The \href{https://vtaiwan.tw}{vTaiwan} platform is a widely studied model of digital democracy,
+combining online participation with structured, in-person deliberation to inform public policy in Taiwan.
+Despite its success, vTaiwan faces persistent challenges such as \textit{group polarization},
+\textit{unbalanced participation}, and \textit{inefficient consensus formation}.
+
+For example, in the deliberation on
+\href{https://blog.pol.is/uber-responds-to-vtaiwans-coherent-blended-volition-3e9b75102b9b}{Uber’s legality},
+tech-savvy users and gig economy advocates dominated the discussion,
+marginalizing traditional taxi drivers.
+In the alcohol sales debate, participation skewed toward industry and libertarian voices,
+with little input from public health stakeholders~\parencite{tiku2018taiwan}.
+These cases illustrate how self-selection and opinion clustering can lead to echo chambers
+and suppress diverse perspectives.
+
+Currently, vTaiwan’s deliberation phase uses \href{https://pol.is/home}{Pol.is},
+which clusters participants by opinion similarity.
+While effective at mapping consensus, this approach can reinforce polarization
+and fails to ensure stakeholder balance or engagement equity within groups.
+To improve deliberative quality, we propose moving beyond organic clustering
+toward structured group formation methods.
+
+\subsubsection*{Context: Deliberation and Group Design}
+
+Research in deliberative democracy shows that group composition
+significantly affects discussion quality~\parencite{fay2000group}.
+Small, diverse groups reduce risks of domination
+and foster more robust consensus formation~\parencite{anagnostopoulos2012groupformation}.
+Odd-numbered group sizes between 5 and 13 are especially effective,
+balancing inclusiveness with coordination,
+and avoiding decision deadlocks~\parencite{fishkin2009deliberative, menon2011oddgroups}.
+
+Ensuring fairness requires deliberate attention to stakeholder affiliation, opinion diversity,
+and participant engagement.
+Unconstrained group formation can reproduce existing inequalities
+or concentrate influence among dominant voices.
+
+\subsubsection*{Project Overview}
+
+This project introduces an optimization-based approach
+to deliberative group formation for platforms like vTaiwan.
+Instead of relying on emergent clustering,
+we model group assignment as a constrained Integer Programming (IP) problem.
+Each participant is represented by a feature vector derived from engagement metrics
+(comment count, rating behavior, sentiment, stakeholder tags).
+Our objective is to generate groups that:
+\begin{enumerate}
+  \item Maximize intra-group diversity;
+  \item Prevent any stakeholder group from dominating too many groups;
+  \item Balance engagement levels (and optionally sentiment) across groups.
+\end{enumerate}
+Group sizes are constrained to odd numbers from $\{3,5,7,9,11,13\}$.
+We formulate a formal IP model to encode these goals and constraints,
+and explore its linear relaxation to assess tractability and approximation quality.

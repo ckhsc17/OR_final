@@ -1,0 +1,32 @@
+%\subsubsection*{The Role of Group Deliberation in Digital Democracy}
+Digital democracy platforms like vTaiwan seek to turn diverse public input into actionable consensus.
+While online engagement collects wide-ranging views, small face-to-face deliberations help participants
+exchange reasons, clarify misunderstandings, and negotiate trade-offs in real time—enhancing empathy,
+reducing polarization, and strengthening trust.
+These interpersonal processes are essential complements to algorithmic aggregation.
+
+\subsubsection*{Empirical Findings on Deliberative Group Sizes}\label{subsec:group_sizes}
+
+Studies show a trade-off between inclusiveness and interaction quality.
+Small groups (3–5 members) promote balanced, interactive dialogue~\parencite{fay2000group},
+while mid-sized groups (8–15) offer more diversity with manageable
+coordination~\parencite{involve_citizensjury, fishkin2009deliberative}.
+Very large groups often suffer from monologues and disengagement.
+Odd-numbered group sizes reduce decision deadlocks and polarization~\parencite{menon2011oddgroups},
+making sizes like 5, 7, or 9 both empirically and procedurally robust.
+
+Assuming only about 10\% of the 1921 participants opt into in-person deliberation,
+we expect roughly 15–30 groups of 3–13 participants each.
+
+\subsubsection*{Challenges in Group Formation}
+
+Naive clustering approaches (e.g., k-means) often ignore fairness and deliberative quality,
+leading to echo chambers or imbalanced groups.
+Such methods offer limited control over group sizes or stakeholder representation.
+
+\subsubsection*{Optimization Approaches to Group Design}
+
+Integer Programming (IP) and related techniques have been used for fair team formation and clustering
+with explicit constraints~\parencite{anagnostopoulos2012groupformation, celis2018fair}.
+Though computationally intensive, these approaches are tractable at vTaiwan’s scale and offer
+fine-grained control over group diversity, size, and fairness.
