@@ -4,6 +4,8 @@ import time
 from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
+from typing import Tuple
+import math
 
 # ──────────────────────────────────────────────────────────────
 # Auto adjust group parameters to ensure m*S_min <= n <= m*S_max.
@@ -225,8 +227,8 @@ def solve_heuristic_instance(n: int,
                              lambda1: float = 0.8,
                              lambda2: float = 1.2,
                              max_iter: int = 2000,
-                             seed: int | None = None
-) -> tuple[np.ndarray, float, int, int, int]:
+                             seed: int = 42
+) -> Tuple[np.ndarray, float, int, int, int]:
     """
     Run the heuristic greedy composite algorithm on a generated instance.
 

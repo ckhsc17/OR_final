@@ -154,7 +154,7 @@ def solve_ip(n, m, D, E, S_min, S_max, delta, eta,
         eng = quicksum(E[i] * x[i, j] for i in range(n))
         # model.addConstr(eng >= eta)
 
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
 
     if model.Status == GRB.INFEASIBLE:
@@ -206,7 +206,7 @@ def solve_lp_rounding(n, m, D, E, S_min, S_max, delta, eta,
         eng = quicksum(E[i] * x[i, j] for i in range(n))
         # model.addConstr(eng >= eta)
 
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
     if model.Status not in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
         raise RuntimeError("LP infeasible (status {})".format(model.Status))
@@ -265,7 +265,7 @@ def solve_ip_mccormick(n, m, D, E, S_min, S_max, delta, eta,
         eng = quicksum(E[i] * x[i, j] for i in range(n))
         # model.addConstr(eng >= eta)  # Optional
 
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
 
     if model.Status == GRB.INFEASIBLE:
@@ -305,7 +305,7 @@ def solve_hybrid_group_then_refine(n, m, D, E, S_min, S_max, lambda_eng=0.1, max
         model.addConstr(x.sum('*', j) >= S_min)
         model.addConstr(x.sum('*', j) <= S_max)
 
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
 
     frac = np.array([[x[i, j].X for j in range(m)] for i in range(n)])

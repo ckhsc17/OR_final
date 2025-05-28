@@ -65,7 +65,7 @@ def solve_ip(n, m, A, D, E, S, C, S_min, S_max, delta, theta,
         model.addConstr(quicksum((S[i] == -1) * x[i, j] for i in range(n)) >= 1, name=f"sent_neg_{j}")
     print(f"[IP] Model built: {model.NumVars} vars, {model.NumConstrs} constrs")
     print("[IP] Starting optimization...")
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
     print(f"[IP] Optimization complete. ObjVal = {model.ObjVal:.4f}")
     sol = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
@@ -108,7 +108,7 @@ def solve_lp_rounding(n, m, A, D, E, S, C, S_min, S_max, delta, theta,
         model.addConstr(quicksum((S[i] == -1) * x[i, j] for i in range(n)) >= 1, name=f"sent_neg_{j}")
     print(f"[LP] Model built: {model.NumVars} vars, {model.NumConstrs} constrs")
     print("[LP] Starting optimization...")
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
     print(f"[LP] Optimization complete. ObjVal = {model.ObjVal:.4f}")
     sol = np.array([[x[i, j].X for j in range(m)] for i in range(n)])

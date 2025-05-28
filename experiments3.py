@@ -71,7 +71,7 @@ def solve_ip(n, m, D, E, S_min, S_max, delta, eta, lambda1=1.0, lambda2=0.1):
 
     print(f"[IP-V3] Model built: {model.NumVars} vars, {model.NumConstrs} constrs")
     print("[IP-V3] Starting optimization...")
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
     print(f"[IP-V3] Optimization complete. ObjVal = {model.ObjVal:.4f}")
     sol = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
@@ -118,7 +118,7 @@ def solve_lp_rounding(n, m, D, E, S_min, S_max, delta, eta, lambda1=1.0, lambda2
 
     print(f"[LP-V3] Model built: {model.NumVars} vars, {model.NumConstrs} constrs")
     print("[LP-V3] Starting optimization...")
-    model.Params.OutputFlag = 1
+    model.Params.OutputFlag = 0
     model.optimize()
     print(f"[LP-V3] Optimization complete. ObjVal = {model.ObjVal:.4f}")
     sol = np.array([[x[i, j].X for j in range(m)] for i in range(n)])

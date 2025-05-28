@@ -72,6 +72,10 @@ def main():
                     n, D, E, smax, lambda1_h, lambda2_h, max_iter_h
                 )
                 t_h = time.perf_counter() - t0
+                print("===== Heuristic Result =====")
+                print(assign_h)
+                print(obj_h)
+
 
                 # Lagrangian Relaxation 方法
                 t0 = time.perf_counter()
@@ -81,12 +85,22 @@ def main():
                     max_iter=max_iter_lr, seed=seed
                 )
                 t_lr = time.perf_counter() - t0
+                print("===== Lagrangian Relaxation Result =====")
+                print(assign_lr)
+                print(obj_lr)
+
+
 
                 # Naive (IP stub) 方法：round-robin
                 t0 = time.perf_counter()
                 assign_ip = np.arange(n) % m
                 obj_ip = compute_objective(assign_ip, D, E, lambda1_lr, lambda2_lr)
                 t_ip = time.perf_counter() - t0
+                print("===== IP Stub Result =====")
+                print(assign_ip)
+                print(obj_ip)
+
+
 
                 # 計算 gaps 與 stds
                 gap_ip = compute_gap(obj_ip, obj_lr)
