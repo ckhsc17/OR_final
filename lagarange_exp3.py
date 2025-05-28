@@ -114,6 +114,10 @@ env.start()
 # Utilities for auto‑calibrating group parameters
 # ──────────────────────────────────────────────────────────────
 
+global D
+global E
+
+
 def auto_adjust_group_params(n: int,
                              m_init: int,
                              s_min_init: int,
@@ -285,6 +289,7 @@ def load_data_sparse_downsampled_priority_commenters(pv_path: str | Path,
     # Cosine similarity / dissimilarity
     votes_sparse = csr_matrix(votes_matrix)
     A = cosine_similarity(votes_sparse, dense_output=False).toarray()
+    
     D = 1.0 - A
 
     participants = pv["participant"].tolist()
@@ -300,6 +305,7 @@ def load_data_sparse_downsampled_priority_commenters(pv_path: str | Path,
 # ──────────────────────────────────────────────────────────────
 
 def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env) -> tuple[gp.Model, gp.tupledict]:
+    global E
     """
     Build the assignment model once for reuse across Lagrangian iterations.
     
@@ -318,6 +324,8 @@ def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env) -> tuple
     mdl = gp.Model(env=env)
     x = mdl.addVars(n, m, vtype=gp.GRB.BINARY, name="x")
 
+    eta = 20 * s_min
+
     # CONSTRAINT 1: Each participant assigned to exactly one group
     for i in range(n):
         mdl.addConstr(x.sum(i, '*') == 1, name=f"assign_{i}")
@@ -326,6 +334,33 @@ def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env) -> tuple
     for j in range(m):
         mdl.addConstr(x.sum('*', j) >= s_min, name=f"size_min_{j}")
         mdl.addConstr(x.sum('*', j) <= s_max, name=f"size_max_{j}")
+    
+    # CONSTRAINT 3: Diversity Threshold
+    # put into lagrange decomposition
+    '''
+    for j in range(m):
+        expr = gp.QuadExpr()
+        for i in range(n):
+            for k in range(i + 1, n):
+                expr.add(D[i, k] * x[i, j] * x[k, j])
+        mdl.addQConstr(expr <= delta, name=f"div_thresh_{j}")
+    '''
+
+    # CONSTRAINT 4: Minimum Engagement per Group
+    for j in range(m):
+        expr = gp.quicksum(E[i] * x[i, j] for i in range(n))
+        mdl.addConstr(expr >= eta, name=f"min_engage_{j}")
+
+    # CONSTRAINT 5: Engagement Deviation Linearization
+    z = mdl.addVars(m, vtype=GRB.CONTINUOUS, name="z")  # auxiliary variables
+    E_bar = E.sum() / m  # average engagement level
+
+    for j in range(m):
+        engage = gp.quicksum(E[i] * x[i, j] for i in range(n))
+        mdl.addConstr(engage - E_bar <= z[j], name=f"dev_pos_{j}")
+        mdl.addConstr(E_bar - engage <= z[j], name=f"dev_neg_{j}")
+
+
 
     # OBJECTIVE: Start with empty objective (will be updated per iteration)
     mdl.setObjective(gp.LinExpr(), gp.GRB.MINIMIZE)
@@ -433,7 +468,7 @@ def solve_subproblem(cost: np.ndarray, s_min: int, s_max: int) -> np.ndarray:
 
 def lagrangian_decompose(n: int, m: int, D: np.ndarray, E: np.ndarray, *,
                          s_min: int = 5, s_max: int = 15, delta: float = 105.0,
-                         lam1: float = 1.0, lam2: float = .05,
+                         lam1: float = 1.0, lam2: float = .0001,
                          max_iter: int = 60, step0: float = 25.0,
                          random_state: int = 0,
                          use_optimized: bool = True,
@@ -642,12 +677,13 @@ def compute_metrics(assign: np.ndarray,
 # ──────────────────────────────────────────────────────────────
 
 def main():
+    global E
     parser = argparse.ArgumentParser(description="Group assignment via Lagrangian decomposition")
     parser.add_argument("--pv", default="participants-votes.csv")
     parser.add_argument("--cm", default="comments.csv")
-    parser.add_argument("--m_init", type=int, default=3) # Initial number of groups
-    parser.add_argument("--s_min", type=int, default=5)
-    parser.add_argument("--s_max", type=int, default=150) # Maximum group size
+    parser.add_argument("--m_init", type=int, default=2) # Initial number of groups
+    parser.add_argument("--s_min", type=int, default=1000)
+    parser.add_argument("--s_max", type=int, default=1500) # Maximum group size
     parser.add_argument("--max_iter", type=int, default=60)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--n_limit", type=int, default=2000, help="Participant limit (use -1 for full dataset)")
