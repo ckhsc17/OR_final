@@ -1,0 +1,40 @@
+\subsection*{Final MILP Formulation with Column Generation}
+
+To ensure both expressiveness and scalability, we adopt a set-partitioning formulation of the group formation problem, combined with column generation to avoid enumerating all possible groups. This allows us to handle up to 200 participants while enforcing complex constraints over group composition, diversity, and fairness.
+
+\paragraph{Sets and Inputs}
+\begin{itemize}
+    \item Let $P$ be the set of participants, with $|P| = n \in [50, 200]$.
+    \item Let $\mathcal{G} \subseteq \{ g \subseteq P : |g| \in \{3,5,7,9,11,13\} \}$ be a set of feasible candidate groups.
+    \item For each group $g \in \mathcal{G}$, define:
+    \begin{itemize}
+        \item $d_g$: precomputed intra-group diversity score.
+        \item $j_g$: stakeholder group (ISS) that dominates group $g$ (e.g., based on majority membership).
+        \item $i_g = \sum_{p \in g} \text{inv}_p$: total involvement of group $g$.
+    \end{itemize}
+\end{itemize}
+
+\paragraph{Decision Variables}
+\begin{itemize}
+    \item $z_g \in \{0,1\}$: 1 if group $g$ is selected, 0 otherwise.
+\end{itemize}
+
+\paragraph{Constraints}
+\begin{align*}
+\text{(C1) Participant assignment:} && \sum_{g \ni p} z_g &\leq 1 && \forall p \in P \\
+\text{(C2) Stakeholder group counts:} && D_j &= \sum_{\substack{g \in \mathcal{G} \\ j_g = j}} z_g && \forall j \in \text{ISS} \\
+\text{(C3) Stakeholder balance:} && |D_j - D_{j'}| &\leq T && \forall j, j' \in \text{ISS} \\
+\text{(C4) Involvement balance:} && I &= \sum_{g \in \mathcal{G}} i_g \cdot z_g \\
+&& \underline{I} &\leq i_g \cdot z_g \leq \overline{I} && \forall g \in \mathcal{G} \\
+&& \overline{I} - \underline{I} &\leq B
+\end{align*}
+
+\paragraph{Objective}
+\begin{equation*}
+\max \left\{ \sum_{g \in \mathcal{G}} d_g \cdot z_g \;-\; \alpha T \;-\; \beta (\overline{I} - \underline{I}) \right\}
+\end{equation*}
+
+Here, $\alpha$ and $\beta$ are penalty weights for stakeholder imbalance and involvement imbalance, respectively.
+
+\paragraph{Column Generation}
+Because enumerating all feasible groups $\mathcal{G}$ is computationally infeasible for large $n$, we employ a column generation strategy. We begin with a small initial subset $\mathcal{G}_0 \subset \mathcal{G}$ and iteratively add high-quality groups (columns) by solving a pricing subproblem that identifies promising candidates to enter the model. This approach allows us to solve the MILP efficiently without full enumeration.

@@ -1,57 +1,32 @@
 %\subsubsection*{The Role of Group Deliberation in Digital Democracy}
-Digital Democracy platforms like vTaiwan aim to harness the collective intelligence of diverse participants.
-Group deliberation serves as a vital complement to purely online input
-by transforming fragmented digital opinions into collective judgments grounded in mutual understanding.
-In digital democracy, small, structured face‐to‐face discussions allow participants to articulate reasoning,
-confront misunderstandings, and negotiate trade‐offs in real time—processes that algorithms alone cannot replicate.
-By fostering interpersonal trust and exposing individuals to diverse perspectives, in‐person deliberation mitigates
-echo chambers and polarization, thereby enhancing the legitimacy and resilience of digitally informed policy decisions.
+Digital democracy platforms like vTaiwan seek to turn diverse public input into actionable consensus.
+While online engagement collects wide-ranging views, small face-to-face deliberations help participants
+exchange reasons, clarify misunderstandings, and negotiate trade-offs in real time—enhancing empathy,
+reducing polarization, and strengthening trust.
+These interpersonal processes are essential complements to algorithmic aggregation.
 
 \subsubsection*{Empirical Findings on Deliberative Group Sizes}\label{subsec:group_sizes}
 
-Empirical research consistently highlights a trade-off between inclusiveness and interaction quality.
-Smaller groups facilitate mutual listening, balanced speaking opportunities, and greater engagement,
-while larger groups offer broader representativeness at the cost of reduced dialogue quality
-and increased coordination burdens.
+Studies show a trade-off between inclusiveness and interaction quality.
+Small groups (3–5 members) promote balanced, interactive dialogue~\parencite{fay2000group},
+while mid-sized groups (8–15) offer more diversity with manageable
+coordination~\parencite{involve_citizensjury, fishkin2009deliberative}.
+Very large groups often suffer from monologues and disengagement.
+Odd-numbered group sizes reduce decision deadlocks and polarization~\parencite{menon2011oddgroups},
+making sizes like 5, 7, or 9 both empirically and procedurally robust.
 
-Experimental studies demonstrate that groups with 3 to 5 participants tend to exhibit more interactive,
-egalitarian discussions, avoiding patterns of domination or disengagement~\parencite{fay2000group}.
-These \enquote{micro-groups} often yield higher-quality deliberation due to minimized social loafing
-and production-blocking, phenomena well documented in small-group psychology.
-Moderators frequently recommend configurations like \enquote{4$\pm$1} as optimal for promoting sustained interaction
-and trust-building.
-
-Conversely, empirical accounts of citizens’ juries, study circles, and deliberative assemblies reveal
-that moderate group sizes—typically between 8 and 15—strike a practical balance between diversity of perspectives
-and manageable interaction dynamics~\parencite{involve_citizensjury, participedia_citizensjury}.
-Citizens’ juries often convene with 12 to 25 members,
-while large-scale forums such as deliberative polls split hundreds of participants into smaller moderated tables
-of approximately 8 to 12 participants~\parencite{fishkin2009deliberative}.
-Importantly, deliberation tends to degrade in quality when group sizes exceed 10 to 12 participants,
-leading to serial monologues and passive participation.
-
-Additionally, psychological research emphasizes the importance of maintaining odd-numbered group sizes
-to avoid any deadlocks in binary decisions~\parencite{menon2011oddgroups}.
-Even-numbered groups are more prone to indecision or tense polarization, as tie outcomes lack a natural majority.
-Consequently, odd group sizes—especially in the range of 5 to 13—are widely regarded as both empirically
-and procedurally advantageous in structured deliberative formats.
-
-When separating participants into groups of such small sizes, we assume that not all the 1921 participants
-actually want to participate in the face-to-face deliberation.
-If we assume that only about 10\,\% of the participants are willing to participate,
-we could assume to end up with 15 to 30 groups.
+Assuming only about 10\% of the 1921 participants opt into in-person deliberation,
+we expect roughly 15–30 groups of 3–13 participants each.
 
 \subsubsection*{Challenges in Group Formation}
 
-Unstructured or similarity-based clustering (e.g., k-means, spectral clustering) may reinforce echo chambers,
-lack diversity, or yield stakeholder imbalances.
-These methods do not allow explicit constraints on group sizes or fairness,
-making them ill-suited to participatory settings where equity and deliberative quality are paramount.
+Naive clustering approaches (e.g., k-means) often ignore fairness and deliberative quality,
+leading to echo chambers or imbalanced groups.
+Such methods offer limited control over group sizes or stakeholder representation.
 
 \subsubsection*{Optimization Approaches to Group Design}
 
-Integer Programming (IP), Mixed Integer Linear Programming (MILP) and other sophisticated optimization techniques
-have been used for team formation, peer review assignment,
-and fair clustering~\parencite{anagnostopoulos2012groupformation, celis2018fair, charlin2013toronto}.
-While computationally intensive, these models provide precision and flexibility.
-For vTaiwan, where participant numbers are moderate and group sizes small, exact optimization is tractable and desirable.
+Integer Programming (IP) and related techniques have been used for fair team formation and clustering
+with explicit constraints~\parencite{anagnostopoulos2012groupformation, celis2018fair}.
+Though computationally intensive, these approaches are tractable at vTaiwan’s scale and offer
+fine-grained control over group diversity, size, and fairness.

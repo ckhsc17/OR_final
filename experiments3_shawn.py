@@ -59,6 +59,45 @@ def load_data_sparse(pv_path: str, cm_path: str):
     E = (pv['n-comments'] + pv['n-votes']).values
     S = np.sign(pv['n-agree'] - pv['n-disagree']).astype(int)
     C = (pv['n-comments'] > 0).astype(int)
+    print("[Info] Loaded data with n={}, m={}".format(n, len(vote_cols)))
+    return participants, n, A, D, E, S, C
+
+def load_data_stratified_sample(pv_path: str, cm_path: str, sample_size: int, strategy: str = 'sentiment', random_state: int = 42):
+    import pandas as pd
+    from sklearn.model_selection import StratifiedShuffleSplit
+    from scipy.sparse import csr_matrix
+    from sklearn.metrics.pairwise import cosine_similarity
+    import numpy as np
+
+    pv = pd.read_csv(pv_path)
+    cm = pd.read_csv(cm_path)  # 暫時未使用
+
+    # 建立 stratification label
+    if strategy == 'sentiment':
+        stratify_labels = np.sign(pv['n-agree'] - pv['n-disagree']).astype(int)  # -1, 0, +1
+    elif strategy == 'engagement':
+        # 將 engagement 分成 3 等級：低、中、高
+        E = pv['n-comments'] + pv['n-votes']
+        stratify_labels = pd.qcut(E, q=3, labels=False, duplicates='drop')  # 0, 1, 2
+    else:
+        raise ValueError("Unsupported strategy. Use 'sentiment' or 'engagement'.")
+
+    splitter = StratifiedShuffleSplit(n_splits=1, train_size=sample_size, random_state=random_state)
+    indices = next(splitter.split(pv, stratify_labels))[0]
+    pv_sample = pv.iloc[indices].reset_index(drop=True)
+
+    participants = pv_sample['participant'].tolist()
+    n = len(participants)
+    vote_cols = [c for c in pv_sample.columns if c.isdigit()]
+    votes_sparse = csr_matrix(pv_sample[vote_cols].fillna(0).values)
+    A = cosine_similarity(votes_sparse)
+    D = 1 - A
+
+    E = (pv_sample['n-comments'] + pv_sample['n-votes']).values
+    S = np.sign(pv_sample['n-agree'] - pv_sample['n-disagree']).astype(int)
+    C = (pv_sample['n-comments'] > 0).astype(int)
+
+    print(f"[Info] Stratified sample loaded with n={n} using strategy='{strategy}'")
     return participants, n, A, D, E, S, C
 
 # ──────────────────────────────────────────────────────────────
@@ -115,7 +154,7 @@ def solve_ip(n, m, D, E, S_min, S_max, delta, eta,
         eng = quicksum(E[i] * x[i, j] for i in range(n))
         # model.addConstr(eng >= eta)
 
-    model.Params.OutputFlag = 0
+    model.Params.OutputFlag = 1
     model.optimize()
 
     if model.Status == GRB.INFEASIBLE:
@@ -167,7 +206,7 @@ def solve_lp_rounding(n, m, D, E, S_min, S_max, delta, eta,
         eng = quicksum(E[i] * x[i, j] for i in range(n))
         # model.addConstr(eng >= eta)
 
-    model.Params.OutputFlag = 0
+    model.Params.OutputFlag = 1
     model.optimize()
     if model.Status not in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
         raise RuntimeError("LP infeasible (status {})".format(model.Status))
@@ -176,6 +215,128 @@ def solve_lp_rounding(n, m, D, E, S_min, S_max, delta, eta,
     frac = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
     assign = frac.argmax(axis=1)
     return assign, model.ObjVal
+
+
+def solve_ip_mccormick(n, m, D, E, S_min, S_max, delta, eta,
+                       lambda1=1.0, lambda2=0.1):
+    model = Model(env=env)
+    x = model.addVars(n, m, vtype=GRB.BINARY, name="x")
+
+    # ── McCormick 線性化變數 y[i,k,j] = x[i,j] * x[k,j] ──
+    y = {}
+    for j in range(m):
+        for i in range(n):
+            for k in range(i + 1, n):
+                y[i, k, j] = model.addVar(vtype=GRB.CONTINUOUS, lb=0.0, ub=1.0, name=f"y_{i}_{k}_{j}")
+                # McCormick constraints
+                model.addConstr(y[i, k, j] <= x[i, j], f"mcc_y_le_x1_{i}_{k}_{j}")
+                model.addConstr(y[i, k, j] <= x[k, j], f"mcc_y_le_x2_{i}_{k}_{j}")
+                model.addConstr(y[i, k, j] >= x[i, j] + x[k, j] - 1, f"mcc_y_ge_sum_{i}_{k}_{j}")
+
+    # ── 目標函數：Max diversity - engagement variance ──
+    diversity = quicksum(D[i, k] * y[i, k, j]
+                         for j in range(m)
+                         for i in range(n)
+                         for k in range(i + 1, n))
+
+    avgE = E.sum() / m
+    varE = quicksum(
+        (quicksum(E[i] * x[i, j] for i in range(n)) - avgE) *
+        (quicksum(E[i] * x[i, j] for i in range(n)) - avgE)
+        for j in range(m)
+    )
+
+    model.setObjective(lambda1 * diversity - lambda2 * varE, GRB.MAXIMIZE)
+
+    # ── 基本約束式 ──
+    for i in range(n):
+        model.addConstr(x.sum(i, '*') == 1)
+
+    for j in range(m):
+        size = x.sum('*', j)
+        model.addConstr(size >= S_min)
+        model.addConstr(size <= S_max)
+
+        div = quicksum(D[i, k] * y[i, k, j]
+                       for i in range(n)
+                       for k in range(i + 1, n))
+        model.addConstr(div <= delta)
+
+        eng = quicksum(E[i] * x[i, j] for i in range(n))
+        # model.addConstr(eng >= eta)  # Optional
+
+    model.Params.OutputFlag = 1
+    model.optimize()
+
+    if model.Status == GRB.INFEASIBLE:
+        print("Model is infeasible. Computing IIS...")
+        model.computeIIS()
+        model.write("model.ilp")
+        raise RuntimeError("IP infeasible. IIS written to 'model.ilp'.")
+
+    if model.Status != GRB.OPTIMAL:
+        raise RuntimeError(f"IP infeasible (status {model.Status})")
+
+    sol = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
+    return sol.argmax(axis=1), model.ObjVal
+
+
+def solve_hybrid_group_then_refine(n, m, D, E, S_min, S_max, lambda_eng=0.1, max_iter=100):
+    from gurobipy import Model, GRB, quicksum
+    import numpy as np
+
+    # ───── Phase 1: LP-based Fair Assignment ─────
+    model = Model(env=env)
+    x = model.addVars(n, m, lb=0, ub=1, name="x")
+
+    # Engagement variance approximation
+    avgE = E.sum() / m
+    varE = quicksum(
+        (quicksum(E[i] * x[i, j] for i in range(n)) - avgE) *
+        (quicksum(E[i] * x[i, j] for i in range(n)) - avgE)
+        for j in range(m)
+    )
+
+    model.setObjective(-lambda_eng * varE, GRB.MINIMIZE)
+
+    for i in range(n):
+        model.addConstr(x.sum(i, '*') == 1)
+    for j in range(m):
+        model.addConstr(x.sum('*', j) >= S_min)
+        model.addConstr(x.sum('*', j) <= S_max)
+
+    model.Params.OutputFlag = 1
+    model.optimize()
+
+    frac = np.array([[x[i, j].X for j in range(m)] for i in range(n)])
+    assign = frac.argmax(axis=1)
+
+    # ───── Phase 2: Local Search to Maximize Intra-Group Diversity ─────
+    A = 1 - D  # Convert dissimilarity to similarity for agreement
+    best = assign.copy()
+    best_val = sum(A[i, k] for i in range(n) for k in range(n) if best[i] == best[k])
+    group_sizes = np.bincount(best, minlength=m)
+
+    for _ in range(max_iter):
+        i = np.random.randint(n)
+        current_group = best[i]
+        other_groups = [g for g in range(m) if g != current_group and group_sizes[g] < S_max]
+        if not other_groups:
+            continue
+        new_group = np.random.choice(other_groups)
+        if group_sizes[current_group] <= S_min:
+            continue
+
+        cand = best.copy()
+        cand[i] = new_group
+        new_val = sum(A[u, v] for u in range(n) for v in range(n) if cand[u] == cand[v])
+        if new_val > best_val:
+            best = cand
+            best_val = new_val
+            group_sizes[current_group] -= 1
+            group_sizes[new_group] += 1
+
+    return best, best_val
 
 # ──────────────────────────────────────────────────────────────
 # 3-3. Heuristic：隨機啟發 + local search
@@ -244,7 +405,8 @@ def run_experiments(pv_path='participants-votes.csv',
                     cm_path='comments.csv'):
 
     # ① 先讀資料 → 才拿得到 n、A、D、E …
-    participants, n, A, D, E, S, C = load_data_sparse(pv_path, cm_path)
+    participants, n, A, D, E, S, C = load_data_stratified_sample(pv_path, cm_path, sample_size=40, strategy='sentiment')
+
 
     # ② 自動調組數 / 上限 (不要在這之後再覆寫!)
     m_init, S_min_init, S_max_init = 2, 5, 15
@@ -260,10 +422,12 @@ def run_experiments(pv_path='participants-votes.csv',
     methods = {
         # 'Heuristic': lambda: heuristic_greedy(
         #     n, m, A, D, E, S, C, S_min, S_max)[0],
-        'IP': lambda: solve_ip(
-            n, m, D, E, S_min, S_max, delta, eta)[0],
-        'LP': lambda: solve_lp_rounding(
-            n, m, D, E, S_min, S_max, delta, eta)[0]
+        'IP-Hybrid': lambda: solve_hybrid_group_then_refine(n, m, D, E, S_min, S_max, delta, eta)[0],
+        'IP-MCC': lambda: solve_ip_mccormick(n, m, D, E, S_min, S_max, delta, eta)[0],
+        # 'LP': lambda: solve_lp_rounding(
+        #     n, m, D, E, S_min, S_max, delta, eta)[0],
+        # 'IP': lambda: solve_ip(
+        #     n, m, D, E, S_min, S_max, delta, eta)[0],
     }
 
     # ⑤ 跑實驗 & 摘要
