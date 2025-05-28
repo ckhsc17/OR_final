@@ -3,6 +3,7 @@ import pandas as pd
 import time
 from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
+from tqdm import tqdm
 
 # ──────────────────────────────────────────────────────────────
 # Auto adjust group parameters to ensure m*S_min <= n <= m*S_max.
@@ -69,7 +70,7 @@ def calibrate_params(D: np.ndarray, E: np.ndarray,
 # ──────────────────────────────────────────────────────────────
 def heuristic_greedy_composite(n, m, D, E, S_min, S_max,
                                lambda_1=1.0, lambda_2=1.0,
-                               max_iter: int = 200):
+                               max_iter: int = 2000):
 
     # Initial random assignment
     assign = np.random.choice(m, size=n)
@@ -77,7 +78,7 @@ def heuristic_greedy_composite(n, m, D, E, S_min, S_max,
 
     # Fix group sizes deterministically: transfer from largest to smallest groups
     def balance_groups(assign, counts):
-        while True:
+        for _ in range(2000):  # avoid infinite loop
             too_small = np.where(counts < S_min)[0]
             too_large = np.where(counts > S_max)[0]
             if len(too_small) == 0 and len(too_large) == 0:
@@ -117,7 +118,7 @@ def heuristic_greedy_composite(n, m, D, E, S_min, S_max,
     best = assign.copy()
     best_val = obj(best)
 
-    for _ in range(max_iter):
+    for _ in tqdm(range(max_iter), desc="Optimizing groups"):
         i = np.random.randint(n)
         old_group = best[i]
         new_group = np.random.randint(m)
