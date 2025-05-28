@@ -196,7 +196,7 @@ def run_experiments(pv_path='participants-votes.csv',
     # 5. Define heuristic method
     methods = {
         'Heuristic_Composite': lambda: heuristic_greedy_composite(
-            n, m, D, E, S_min, S_max, lambda_1, lambda_2)[0]
+            n, m, D, E, S_min, S_max, lambda_1, lambda_2)
     }
 
     # 6. Run experiments and summarize
@@ -204,10 +204,11 @@ def run_experiments(pv_path='participants-votes.csv',
     for name, fn in methods.items():
         print(f"\n===== {name} =====")
         t0 = time.perf_counter()
-        assign = fn()
+        assign, obj_val = fn()
         elapsed = time.perf_counter() - t0
         metrics = compute_metrics(assign, A, D, E)
         metrics['time_sec'] = elapsed
+        metrics['objective'] = obj_val
         records.append((name, metrics))
         print(f"{name} finished in {elapsed:.2f}s, metrics → {metrics}")
 
