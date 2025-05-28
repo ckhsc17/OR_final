@@ -47,25 +47,26 @@ def generate_instance(n, smax, r, diversity_mode='uniform', engagement_mode='nor
         'diversity': D_matrix
     }
 
-# Generate example scenario combinations
-scenarios = []
-for n in [50, 300, 1000]:
-    for smax in [15, 30, 50]:
-        for i in range(3):  # 3 random runs per scenario
-            scenario = generate_instance(n=n, smax=smax, r=3,
-                                         diversity_mode='clustered',
-                                         engagement_mode='normal',
-                                         random_seed=i)
-            scenarios.append({
-                'n': n,
-                'smax': smax,
-                'instance_id': i,
-                'engagement_mean': scenario['engagement'].mean(),
-                'diversity_mean': scenario['diversity'].mean()
-            })
+if __name__ == '__main__':
+    # Generate example scenario combinations
+    scenarios = []
+    for n in [50, 300, 1000]:
+        for smax in [15, 30, 50]:
+            for i in range(3):  # 3 random runs per scenario
+                scenario = generate_instance(n=n, smax=smax, r=3,
+                                            diversity_mode='clustered',
+                                            engagement_mode='normal',
+                                            random_seed=i)
+                scenarios.append({
+                    'n': n,
+                    'smax': smax,
+                    'instance_id': i,
+                    'engagement_mean': scenario['engagement'].mean(),
+                    'diversity_mean': scenario['diversity'].mean()
+                })
 
-df_scenarios = pd.DataFrame(scenarios)
-#import ace_tools as tools; tools.display_dataframe_to_user(name="Generated Scenario Summary", dataframe=df_scenarios)
-print("Generated Scenario Summary")
-print(df_scenarios)
+    df_scenarios = pd.DataFrame(scenarios)
+    #import ace_tools as tools; tools.display_dataframe_to_user(name="Generated Scenario Summary", dataframe=df_scenarios)
+    print("Generated Scenario Summary")
+    print(df_scenarios)
 

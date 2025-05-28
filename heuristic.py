@@ -217,6 +217,65 @@ def run_experiments(pv_path='participants-votes.csv',
     print(summary)
     return summary
 
+# Solve instance
+def solve_heuristic_instance(n: int,
+                             D: np.ndarray,
+                             E: np.ndarray,
+                             smax: int,
+                             lambda1: float = 0.8,
+                             lambda2: float = 1.2,
+                             max_iter: int = 2000,
+                             seed: int | None = None
+) -> tuple[np.ndarray, float, int, int, int]:
+    """
+    Run the heuristic greedy composite algorithm on a generated instance.
+
+    Args:
+        n: number of participants
+        D: (n×n) dissimilarity matrix
+        E: (n,) engagement vector
+        smax: maximum group size bound
+        lambda1, lambda2: objective weights
+        max_iter: number of local search iterations
+        seed: optional random seed for reproducibility
+
+    Returns:
+        assign: array of length n with group assignments [0..m-1]
+        obj_val: objective value of returned assignment
+        m: number of groups
+        S_min: minimum group size
+        S_max: maximum group size (equals smax)
+    """
+    # 1. set RNG
+    if seed is not None:
+        np.random.seed(seed)
+
+    # 2. auto adjust group parameters
+    m_init = math.ceil(n / smax)
+    S_min_init = max(1, math.floor(n / m_init))
+    S_max_init = smax
+    m, S_min, S_max = auto_adjust_group_params(
+        n, m_init, S_min_init, S_max_init, prefer_fix_m=True
+    )
+
+    # 3. optional: calibrate thresholds (not used by heuristic_greedy_composite)
+    _delta, _eta = calibrate_params(D, E, S_max, m)
+
+    # 4. run heuristic
+    assign, obj_val = heuristic_greedy_composite(
+        n=n,
+        m=m,
+        D=D,
+        E=E,
+        S_min=S_min,
+        S_max=S_max,
+        lambda_1=lambda1,
+        lambda_2=lambda2,
+        max_iter=max_iter
+    )
+
+    return assign, obj_val, m, S_min, S_max
+
 # ──────────────────────────────────────────────────────────────
 # Command line interface
 # ──────────────────────────────────────────────────────────────

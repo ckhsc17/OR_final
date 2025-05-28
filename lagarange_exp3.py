@@ -672,6 +672,44 @@ def compute_metrics(assign: np.ndarray,
                 inter_polarization=float(inter),
                 engagement_var=float(np.var(es)))
 
+# Solve Lagrangian instance
+def solve_lagrangian_instance(n, D, E, smax,
+                               lam1: float = 1.0,
+                               lam2: float = 0.0001,
+                               max_iter: int = 60,
+                               seed: int = 0):
+    """
+    Wrapper for Lagrangian decomposition on a generated instance.
+    Returns assignment array, objective value, group count m, size bounds.
+    """
+    from math import ceil, floor
+
+    # 1. 自動調整群組數與大小上下界
+    m_init = math.ceil(n / smax)
+    S_min_init = max(1, math.floor(n / m_init))
+    S_max_init = smax
+    m, S_min, S_max = auto_adjust_group_params(
+        n, m_init, S_min_init, S_max_init, prefer_fix_m=True)
+
+    # 2. 計算 delta, eta（Lagrangian 演算法內部會用到 delta）
+    delta, eta = calibrate_params(D, E, S_max, m)
+
+    # 3. 呼叫核心 Lagrangian decomposition
+    assign, obj_val = lagrangian_decompose(
+        n=n,
+        m=m,
+        D=D,
+        E=E,
+        s_min=S_min,
+        s_max=S_max,
+        delta=delta,
+        lam1=lam1,
+        lam2=lam2,
+        max_iter=max_iter,
+        random_state=seed
+    )
+    return assign, obj_val, m, S_min, S_max
+
 # ──────────────────────────────────────────────────────────────
 # CLI entry point
 # ──────────────────────────────────────────────────────────────
