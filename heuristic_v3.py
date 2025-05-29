@@ -125,10 +125,6 @@ def calibrate_params(D: np.ndarray, E: np.ndarray,
 # ──────────────────────────────────────────────────────────────
 # Heuristic greedy method for Lagrangian-based group assignment
 # ──────────────────────────────────────────────────────────────
-
-import numpy as np
-from tqdm import tqdm
-
 def lagrangian_heuristic_v3(n, m, D, E, S_min, S_max,
                             lambda_1=1.0, lambda_2=.05,
                             delta=105.0, eta=10.0,
@@ -158,7 +154,6 @@ def lagrangian_heuristic_v3(n, m, D, E, S_min, S_max,
         return lambda_1 * diversity - lambda_2 * imbalance + penalty
 
     # Track best assignment found so far
-    best_assign = assign.copy()
     best_val = lagrangian_obj(assign, mu)
 
     # Track best *feasible* assignment (satisfying constraints)
