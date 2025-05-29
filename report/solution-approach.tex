@@ -1,3 +1,45 @@
 \subsection*{Model Implementation}
-\subsection*{Solvers and Computational Tools}
-\subsection*{Scalability and Complexity Considerations}
+
+To efficiently solve the group assignment problem under complex diversity and engagement constraints, we implement a heuristic based on Lagrangian relaxation and local search.
+
+The algorithm begins with a random initial assignment of participants to groups and iteratively improves the assignment by:
+\begin{itemize}
+    \item Maximizing intra-group diversity,
+    \item Minimizing engagement variance,
+    \item Satisfying group size, diversity threshold, and minimum engagement constraints.
+\end{itemize}
+
+Due to the difficulty of directly enforcing the quadratic diversity constraint, we relax it using Lagrangian multipliers $\mu_j \geq 0$, converting it into a penalized term in the objective function. The algorithm alternates between:
+\begin{enumerate}
+    \item \textbf{Primal update:} Local randomized reassignment of participants to groups to improve the Lagrangian objective.
+    \item \textbf{Dual update:} Updating multipliers $\mu_j$ via subgradient ascent based on constraint violations.
+\end{enumerate}
+
+A repair step is performed at the end to correct any residual constraint violations.
+
+\begin{algorithm}[H]
+\caption*{Lagrangian Relaxation Heuristic for Group Assignment}
+\begin{algorithmic}[1]
+\State Initialize group assignments $x$ randomly
+\State Initialize Lagrange multipliers $\mu_j \gets 0$
+\For{each outer iteration (dual loop)}
+    \For{each inner iteration (local search)}
+        \State Randomly select a participant $i$ and a new group $j'$
+        \If{move is valid (group sizes in $[s_{\min}, s_{\max}]$)}
+            \State Evaluate updated assignment $x'$
+            \If{Lagrangian objective improves}
+                \State Accept new assignment
+            \EndIf
+        \EndIf
+    \EndFor
+    \For{each group $j$}
+        \State Update $\mu_j \gets \max(0, \mu_j + \alpha \cdot (\delta - \text{diversity}_j))$
+    \EndFor
+    \If{assignment satisfies all constraints}
+        \State Save as current best feasible solution
+    \EndIf
+\EndFor
+\State Repair step: iteratively fix constraint violations (if any)
+\State \Return best feasible assignment found
+\end{algorithmic}
+\end{algorithm}
