@@ -304,7 +304,7 @@ def load_data_sparse_downsampled_priority_commenters(pv_path: str | Path,
 # Lagrangian Decomposition core - Optimized for large-scale problems
 # ──────────────────────────────────────────────────────────────
 
-def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env, E, D) -> tuple[gp.Model, gp.tupledict]:
+def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env, E, D, Type) -> tuple[gp.Model, gp.tupledict]:
     #global E
     """
     Build the assignment model once for reuse across Lagrangian iterations.
@@ -322,7 +322,10 @@ def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env, E, D) ->
     Subsequent iterations only update objective coefficients (~30-80ms per solve)
     """
     mdl = gp.Model(env=env)
-    x = mdl.addVars(n, m, vtype=gp.GRB.BINARY, name="x")
+    if Type == 1:
+        x = mdl.addVars(n, m, vtype=gp.GRB.BINARY, name="x")
+    else:
+        x = mdl.addVars(n, m, vtype=gp.GRB.CONTINUOUS, lb=0.0, ub=1.0, name="x")
 
     delta, eta = calibrate_params(D, E, s_max, m)
 
@@ -472,7 +475,8 @@ def lagrangian_decompose(n: int, m: int, D: np.ndarray, E: np.ndarray, *,
                          max_iter: int = 60, step0: float = 25.0,
                          random_state: int = 0,
                          use_optimized: bool = True,
-                         update_var_every: int = 5) -> tuple[np.ndarray, float]:
+                         update_var_every: int = 5,
+                         Type: int = 1) -> tuple[np.ndarray, float]:
     """
     Lagrangian decomposition algorithm for v3 group assignment optimization.
     
@@ -549,7 +553,7 @@ def lagrangian_decompose(n: int, m: int, D: np.ndarray, E: np.ndarray, *,
     # ═══════════════════════════════════════════════════════════════
     if use_optimized:
         print(f"[Lagrangian] Building optimized model for n={n}, m={m}...")
-        mdl, x = build_assignment_model(n, m, s_min, s_max, env, E, D)
+        mdl, x = build_assignment_model(n, m, s_min, s_max, env, E, D, Type)
         print(f"[Lagrangian] Model built: {mdl.NumVars} vars, {mdl.NumConstrs} constraints")
     
     assign = np.arange(n) % m  # Round-robin: participant i → group (i mod m)
@@ -677,7 +681,8 @@ def solve_lagrangian_instance(n, D, E, smax,
                                lam1: float = 1.0,
                                lam2: float = 0.0001,
                                max_iter: int = 60,
-                               seed: int = 0):
+                               seed: int = 0,
+                               Type = int):
     """
     Wrapper for Lagrangian decomposition on a generated instance.
     Returns assignment array, objective value, group count m, size bounds.
@@ -707,7 +712,8 @@ def solve_lagrangian_instance(n, D, E, smax,
         lam1=lam1,
         lam2=lam2,
         max_iter=max_iter,
-        random_state=seed
+        random_state=seed,
+        Type=Type
     )
     return assign, obj_val, m, S_min, S_max
 
@@ -723,7 +729,7 @@ def main():
     parser.add_argument("--m_init", type=int, default=2) # Initial number of groups
     parser.add_argument("--s_min", type=int, default=5)
     parser.add_argument("--s_max", type=int, default=15) # Maximum group size
-    parser.add_argument("--max_iter", type=int, default=60)
+    parser.add_argument("--max_iter", type=int, default=600)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--n_limit", type=int, default=n, help="Participant limit (use -1 for full dataset)")
     parser.add_argument("--full", action="store_true", help="Use full dataset (equivalent to --n_limit -1)")
