@@ -1,21 +1,61 @@
 \subsection*{Model Implementation}
 
-To efficiently solve the group assignment problem under complex diversity and engagement constraints, we implement a heuristic based on Lagrangian relaxation and local search.
+We address the group assignment problem using three approaches: Integer Programming (IP), Linear Programming (LP) relaxation, and a heuristic based on Lagrangian relaxation.
 
-The algorithm begins with a random initial assignment of participants to groups and iteratively improves the assignment by:
+Due to the computational difficulty of enforcing the quadratic diversity constraint, we relax it using nonnegative Lagrange multipliers $\mu_j$, transforming it into a penalized objective term.
+
+\subsection*{Lagrangian Objective Function}
+
+\[
+L(\mathbf{x}, \boldsymbol{\mu}) = \lambda_1 \sum_j \sum_{i<k} D(i,k) x_{ij} x_{kj} - \lambda_2 \sum_j (E_j - \bar{E})^2 + \sum_j \mu_j \left( \delta - \sum_{i<k} D(i,k) x_{ij} x_{kj} \right)
+\]
+
+\subsection*{Decomposition}
+
+\[
+L(\mathbf{x}, \boldsymbol{\mu}) = \sum_{i,j} \text{cost}[i,j] \, x_{ij} - \lambda_2 \sum_j (E_j - \bar{E})^2 + \sum_j \mu_j \delta
+\]
+
+where
+\[
+\text{cost}[i,j] = (\lambda_1 - \mu_j) \cdot \text{div\_contrib}[i,j] + \lambda_2 \cdot \text{var\_contrib}[i,j]
+\]
+
+with:
 \begin{itemize}
-    \item Maximizing intra-group diversity,
-    \item Minimizing engagement variance,
-    \item Satisfying group size, diversity threshold, and minimum engagement constraints.
+    \item $\text{div\_contrib}[i,j] = \sum_{k \in G_j} D(i,k)$: diversity gain from adding $i$ to group $j$,
+    \item $\text{var\_contrib}[i,j]$: variance impact on engagement,
+    \item $\mu_j$: multiplier penalizing diversity constraint violation.
 \end{itemize}
 
-Due to the difficulty of directly enforcing the quadratic diversity constraint, we relax it using Lagrangian multipliers $\mu_j \geq 0$, converting it into a penalized term in the objective function. The algorithm alternates between:
-\begin{enumerate}
-    \item \textbf{Primal update:} Local randomized reassignment of participants to groups to improve the Lagrangian objective.
-    \item \textbf{Dual update:} Updating multipliers $\mu_j$ via subgradient ascent based on constraint violations.
-\end{enumerate}
+\subsection*{Subgradient Update}
 
-A repair step is performed at the end to correct any residual constraint violations.
+\[
+\mu_j^{(t+1)} \leftarrow \max(0, \mu_j^{(t)} - \text{step}_t \cdot (\delta - \text{diversity}_j^{(t)})), \quad \text{with } \text{step}_t = \frac{\text{step}_0}{\sqrt{t}}
+\]
+
+\subsection*{Optimization Approaches}
+
+\paragraph{Integer Programming (IP):}
+We solve the exact combinatorial model using Gurobi. While optimal, it scales poorly for large instances.
+
+\paragraph{Linear Programming (LP) Relaxation:}
+To improve scalability, we relax the binary and discrete constraints as follows:  
+\begin{itemize}  
+    \item Assignment variables: \( x_{ij} \in \{0, 1\} \) is relaxed to \( x_{ij} \in [0, 1] \).  
+    \item Group sizes: \( s_j \in \{3, 5, 7, 9, 11, 13\} \) is relaxed to continuous bounds \( 5 \leq s_j \leq 13 \).  
+    \item Dominance indicators: \( d_j \in \{0, 1\} \) can be relaxed to \( d_j \in [0, 1] \), with appropriate rounding applied afterward to recover feasible discrete solutions.  
+\end{itemize}  
+We solve the relaxed model efficiently using Gurobi. While the LP relaxation provides a computational advantage and offers useful bounds, it still requires post-processing (e.g., rounding or repair heuristics) to obtain valid and feasible group assignments that satisfy the original problem’s discrete and combinatorial nature.
+
+\paragraph{Heuristic Algorithm:}
+We combine Lagrangian relaxation with local search:
+\begin{itemize}
+    \item Random initial assignment.
+    \item Primal updates: randomized reassignment to improve the Lagrangian objective.
+    \item Dual updates: multiplier adjustments via subgradient ascent.
+    \item Final repair step to fix constraint violations.
+\end{itemize}
 
 \begin{algorithm}[H]
 \caption*{Lagrangian Relaxation Heuristic for Group Assignment}
@@ -44,6 +84,5 @@ A repair step is performed at the end to correct any residual constraint violati
 \end{algorithmic}
 \end{algorithm}
 
-\subsection*{Solvers and Computational Tools}
-
-\subsection*{Scalability and Complexity Considerations}
+\subsection*{Computational Considerations}
+IP provides exact solutions but has exponential complexity. LP relaxations offer bounds but need rounding. The heuristic achieves near-optimal solutions efficiently, scaling to hundreds of participants and multiple groups, making it suitable for real-world applications.

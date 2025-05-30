@@ -4,7 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 *.json
-experiment_summary.csv
+*.csv
 *.db
 # Latex files
 *.aux
