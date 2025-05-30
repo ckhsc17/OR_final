@@ -322,9 +322,12 @@ def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env, E, D, Ty
     Subsequent iterations only update objective coefficients (~30-80ms per solve)
     """
     mdl = gp.Model(env=env)
+    print(f"DEBUG: n={n}, m={m}")
     if Type == 1:
+        print("DEBUG: Type=1")
         x = mdl.addVars(n, m, vtype=gp.GRB.BINARY, name="x")
     else:
+        print("DEBUG: Type=0")
         x = mdl.addVars(n, m, vtype=gp.GRB.CONTINUOUS, lb=0.0, ub=1.0, name="x")
 
     delta, eta = calibrate_params(D, E, s_max, m)
