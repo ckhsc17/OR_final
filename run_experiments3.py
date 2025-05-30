@@ -6,7 +6,7 @@ import pandas as pd
 from generator2 import generate_instance
 from heuristic import solve_heuristic_instance
 # 重命名原本的 Lagrangian function
-from lagarange_exp3 import solve_lagrangian_instance as solve_ip_lagrangian_instance
+from lagarange_exp3 import solve_lagrangian_instance
 # 占位：之後實作 linear relaxation + Lagrange
 # from lp_lagrangian import solve_lp_lagrangian_instance
 
@@ -54,7 +54,7 @@ def main():
     lambda1_h, lambda2_h = 1.0, 0.0001
     lambda1_lr, lambda2_lr = 1.0, 0.0001
     max_iter_h = 2000
-    max_iter_lr = 60
+    max_iter_lr = 600
 
     for n in [50, 300, 1000]:
         for smax in [15, 30, 50]:
@@ -77,10 +77,10 @@ def main():
 
                 # IP + Lagrangian Relaxation 方法
                 t0 = time.perf_counter()
-                assign_ip_lag, obj_ip_lag, _, _, _ = solve_ip_lagrangian_instance(
+                assign_ip_lag, obj_ip_lag, _, _, _ = solve_lagrangian_instance(
                     n, D, E, smax,
                     lam1=lambda1_lr, lam2=lambda2_lr,
-                    max_iter=max_iter_lr, seed=seed
+                    max_iter=max_iter_lr, seed=seed, Type=1
                 )
                 t_ip_lag = time.perf_counter() - t0
 
@@ -91,20 +91,25 @@ def main():
                 t_naive = time.perf_counter() - t0
 
                 # (後續) LP Relaxation + Lagrangian 比較 - 占位呼叫
-                # t0 = time.perf_counter()
-                # assign_lp_lag, obj_lp_lag, _, _, _ = solve_lp_lagrangian_instance(...)
-                # t_lp_lag = time.perf_counter() - t0
+                t0 = time.perf_counter()
+                assign_lp_lag, obj_lp_lag, _, _, _ = solve_lagrangian_instance(
+                    n, D, E, smax,
+                    lam1=lambda1_lr, lam2=lambda2_lr,
+                    max_iter=max_iter_lr, seed=seed, Type=0
+                )
+                t_lp_lag = time.perf_counter() - t0
 
                 # 計算 gaps 與 stds
+                # 以 ip_lag 作為比較基準
                 gap_naive = compute_gap(obj_naive, obj_ip_lag)
                 gap_ip_lag = compute_gap(obj_ip_lag, obj_ip_lag)
                 gap_h = compute_gap(obj_h, obj_ip_lag)
-                # gap_lp_lag = compute_gap(obj_lp_lag, obj_ip_lag)
+                gap_lp_lag = compute_gap(obj_lp_lag, obj_ip_lag)
 
                 std_naive = compute_engagement_std(assign_naive, E)
                 std_ip_lag = compute_engagement_std(assign_ip_lag, E)
                 std_h = compute_engagement_std(assign_h, E)
-                # std_lp_lag = compute_engagement_std(assign_lp_lag, E)
+                std_lp_lag = compute_engagement_std(assign_lp_lag, E)
 
                 results.append({
                     'Scenario': scenario_id,
@@ -120,9 +125,9 @@ def main():
                     'Heuristic Gap (%)': gap_h,
                     'Heuristic Std': std_h,
                     'Heuristic Time (s)': t_h,
-                    # 'LP_Lagrangian Gap (%)': gap_lp_lag,
-                    # 'LP_Lagrangian Std': std_lp_lag,
-                    # 'LP_Lagrangian Time (s)': t_lp_lag
+                    'LP_Lagrangian Gap (%)': gap_lp_lag,
+                    'LP_Lagrangian Std': std_lp_lag,
+                    'LP_Lagrangian Time (s)': t_lp_lag
                 })
                 scenario_id += 1
 
