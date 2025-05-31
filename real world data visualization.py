@@ -1,3 +1,5 @@
+from sklearn.decomposition import PCA
+import seaborn as sns
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -27,7 +29,7 @@ plt.title('PCA Plot by Group')
 plt.xlabel('Principal Component 1')
 plt.ylabel('Principal Component 2')
 plt.legend(title='Group')
-plt.show()
+#plt.show()
 
 # plot PCA 2
 plt.figure(figsize=(10, 8))
@@ -36,7 +38,7 @@ plt.title('PCA Plot by Group-id')
 plt.xlabel('Principal Component 1')
 plt.ylabel('Principal Component 2')
 plt.legend(title='Group-id')
-plt.show()
+#plt.show()
 
 group_counts = df.groupby(['group', 'group-id']).size().unstack(fill_value=0)
 
@@ -47,4 +49,4 @@ plt.xlabel('Group')
 plt.ylabel('Count')
 plt.legend(title='Group ID', bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
-plt.show()
+#plt.show()
