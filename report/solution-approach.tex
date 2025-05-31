@@ -46,7 +46,7 @@ To improve scalability, we relax the binary and discrete constraints as follows:
     \item Group sizes: \( s_j \in \{3, 5, 7, 9, 11, 13\} \) is relaxed to continuous bounds \( 5 \leq s_j \leq 13 \).  
     \item Dominance indicators: \( d_j \in \{0, 1\} \) can be relaxed to \( d_j \in [0, 1] \), with appropriate rounding applied afterward to recover feasible discrete solutions.  
 \end{itemize}  
-We solve the relaxed model efficiently using Gurobi. While the LP relaxation provides a computational advantage and offers useful bounds, it still requires post-processing (e.g., rounding or repair heuristics) to obtain valid and feasible group assignments that satisfy the original problem’s discrete and combinatorial nature.
+We solve the relaxed model efficiently using Gurobi. While the LP relaxation provides a computational advantage and offers useful bounds, it still requires post-processing (e.g., rounding or repair heuristics) to obtain valid and feasible group assignments that satisfy the original problem's discrete and combinatorial nature.
 
 \paragraph{Heuristic Algorithm:}
 We combine Lagrangian decomposition with local search:

@@ -8,7 +8,7 @@ Let:
     \item $E(i)$: Engagement score of participant $i$.\\(e.g., number of distinct issues voted on.)
     \item $x_{ij} \in \{0,1\}$: Indicating whether participant $i$ is assigned to group $j$.
     \item $y_{jl} \in \{0,1\}$: Indicating whether group $j$ has size $l \in \{5,7,9,11,13,15\}$.
-    \item $z_j \geq 0$: Auxiliary variable representing the absolute deviation of group $j$’s engagement from the target $\bar{E}$.
+    \item $z_j \geq 0$: Auxiliary variable representing the absolute deviation of group $j$'s engagement from the target $\bar{E}$.
     \item $d_j \in \{0,1\}$: Binary variable indicating whether group $j$ is dominated by any stakeholder group.
 \end{itemize}
 
@@ -63,7 +63,7 @@ We enforce this using:
     s_j = \sum_{l \in \{5,7,9,11,13,15\}} l \cdot y_{jl} \quad \forall j \in G
 \end{gather*}
 \textbf{(3) Diversity Threshold}\\[3pt]
-To avoid excessive internal conflict, each group’s diversity must not exceed a maximum threshold:
+To avoid excessive internal conflict, each group's diversity must not exceed a maximum threshold:
 \[
 \sum_{i < k} D(i,k)\,x_{ij} x_{kj} \leq \delta \quad \forall j \in G
 \]
@@ -73,7 +73,7 @@ Each group must contain a minimum total engagement score:
 \sum_{i \in P} E(i)\,x_{ij} \geq \eta \quad \forall j \in G
 \]
 \textbf{(5) Engagement Deviation Linearization}\\[3pt]
-We define the absolute deviation of each group’s engagement from the target \(\bar{E}\) using auxiliary variables:
+We define the absolute deviation of each group's engagement from the target \(\bar{E}\) using auxiliary variables:
 \begin{gather*}
     \sum_{i \in P} E(i)\,x_{ij} - \bar{E} \leq z_j \quad \forall j \in G\\
     \bar{E} - \sum_{i \in P} E(i)\,x_{ij} \leq z_j \quad \forall j \in G\\
@@ -88,7 +88,7 @@ Then:
     \sum_{i \in I_\sigma} x_{ij} \leq \alpha \cdot s_j + M \cdot d_j \quad \forall j \in G,\ \forall \sigma \in* S\\
     \sum_{j \in G} d_j \leq \gamma\\
 \end{gather*}
-\vspace{-0.5cm}
+% \vspace{-0.5cm}
 Where:
 \begin{itemize}
     \item \(\alpha \in (0.5, 1)\): Dominance threshold (e.g., \(\alpha = 0.5\) for majority control)
