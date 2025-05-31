@@ -13,11 +13,16 @@ These cases illustrate how self-selection and opinion clustering can lead to ech
 and suppress diverse perspectives.
 
 Currently, vTaiwan's deliberation phase uses \href{https://pol.is/home}{Pol.is},
-which clusters participants by opinion similarity.
-While effective at mapping consensus, this approach can reinforce polarization
-and fails to ensure stakeholder balance or engagement equity within groups.
-To improve deliberative quality, we propose moving beyond organic clustering
-toward structured group formation methods.
+which analyzes voting patterns to cluster participants by opinion similarity
+and generate consensus statements that reflect shared views across diverse groups.
+While this helps identify areas of agreement,
+Pol.is does \textit{not} assign participants into discussion groups for deliberation.
+In practice, this means that each group may still contain participants with opposing views
+or from conflicting stakeholder backgrounds.
+
+To improve deliberative quality and ensure balanced representation,
+we propose moving beyond passive opinion clustering
+toward structured group formation methods that explicitly optimize for diversity, fairness, and engagement.
 
 \subsubsection*{Context: Deliberation and Group Design}
 
@@ -31,7 +36,7 @@ and avoiding decision deadlocks~\parencite{fishkin2009deliberative, menon2011odd
 
 Ensuring fairness requires deliberate attention to stakeholder affiliation, opinion diversity,
 and participant engagement.
-Unconstrained group formation can reproduce existing inequalities
+Unstructured group formation can reproduce existing inequalities
 or concentrate influence among dominant voices.
 
 \subsubsection*{Project Overview}
@@ -41,7 +46,7 @@ to deliberative group formation for platforms like vTaiwan.
 Instead of relying on emergent clustering,
 we model group assignment as a constrained Integer Programming (IP) problem.
 Each participant is represented by a feature vector derived from engagement metrics
-(comment count, rating behavior, sentiment, stakeholder tags).
+(comment count, voting behavior, sentiment, stakeholder tags).
 Our objective is to generate groups that:
 \begin{enumerate}
   \item Maximize intra-group diversity;
