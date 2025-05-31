@@ -2,20 +2,15 @@ Let:
 \begin{itemize}
     \item $P = \{1, 2, \dots, n\}$: Set of participants.
     \item $G = \{1, 2, \dots, m\}$: Set of groups.
-    \item $S = \{1, 2, \dots, r\}$: Set of stakeholder groups.
-    \item $s(i) \in S$: Stakeholder group membership of participant $i$.
-    \item $D(i,k)$: Diversity score between participants $i$ and $k$.\\(e.g., ideological distance.)
-    \item $E(i)$: Engagement score of participant $i$.\\(e.g., number of distinct issues voted on.)
-    \item $x_{ij} \in \{0,1\}$: Indicating whether participant $i$ is assigned to group $j$.
+    \item $D(i,k)$: Diversity score between participants $i$ and $k$ (e.g., ideological distance.)
+    \item $E(i)$: Engagement score of participants $i$ (e.g., number of comments voted on.)
+    \item $x_{ij} \in \{0,1\}$: Indicating whether participants $i$ is assigned to group $j$.
     \item $y_{jl} \in \{0,1\}$: Indicating whether group $j$ has size $l \in \{5,7,9,11,13,15\}$.
-    \item $z_j \geq 0$: Auxiliary variable representing the absolute deviation of group $j$'s engagement from the target $\bar{E}$.
-    \item $d_j \in \{0,1\}$: Binary variable indicating whether group $j$ is dominated by any stakeholder group.
+    \item $z_j \geq 0$: Auxiliary variable for group $j$’s absolute deviation from the target engagement $\bar{E}$.
 \end{itemize}
 
-Define group size as:
-\[
-s_j \coloneqq \sum_{i \in P} x_{ij}
-\]
+\noindent
+Additionally we define group size as $s_j \coloneqq \sum_{i \in P} x_{ij}$.
 
 \subsection*{Objective Function}
 
@@ -79,28 +74,53 @@ We define the absolute deviation of each group's engagement from the target \(\b
     \bar{E} - \sum_{i \in P} E(i)\,x_{ij} \leq z_j \quad \forall j \in G\\
 \end{gather*}
 \textbf{(6) Stakeholder Dominance Control}\\[3pt]
-To prevent any stakeholder group from dominating too many groups, we restrict the number of groups
-in which more than a threshold fraction \(\alpha\) of members come from the same stakeholder group.
 
-Let \(I_\sigma = \{i \in P \mid s(i) = \sigma\}\) denote the set of participants from stakeholder group \(\sigma \in S\).
-Then:
-\begin{gather*}
-    \sum_{i \in I_\sigma} x_{ij} \leq \alpha \cdot s_j + M \cdot d_j \quad \forall j \in G,\ \forall \sigma \in* S\\
-    \sum_{j \in G} d_j \leq \gamma\\
-\end{gather*}
-% \vspace{-0.5cm}
+
+Participants are clustered into a fixed number of \emph{stakeholder clusters}
+based on similarities in voting behavior and preferences.
+These represent shared interests (such as \textit{taxi drivers}, \textit{Uber drivers}, or \textit{customers}).
+
+To prevent overrepresentation, we limit how often
+a stakeholder cluster may form a relative majority within deliberation groups.
+Without this constraint, the algorithm could produce too many groups dominated by a single stakeholder,
+allowing them to disproportionately influence the outcome.
+This mirrors \emph{gerrymandering} in political science~\parencite{gerrymandering2019},
+where electoral boundaries are drawn to grant one party majority control over most districts.
+
+
+
+\begin{itemize}
+    \item $S = \{1, \dots, r\}$: Stakeholder clusters
+    \item $s(i) \in S$: Stakeholder membership of participant $i \in P$
+    \item $d_{j\sigma} \in \{0,1\}$: 1 if stakeholder $\sigma$ dominates group $j$
+    \item $d_j \in \{0,1\}$: 1 if any stakeholder dominates group $j$
+\end{itemize}
+
+Let $I_\sigma = \{ i \in P \mid s(i) = \sigma \}$ be the set of participants in stakeholder group $\sigma$.
+
+Let the majority threshold for group $j$ be $t_j := \lfloor s_j / 2 \rfloor + 1$.
+Then the following constraints enforce dominance control:
+
+\begin{align*}
+\sum_{i \in I_\sigma} x_{ij} &\geq t_j \cdot d_{j\sigma} \quad &&\forall j \in G,\ \forall \sigma \in S \\
+\sum_{i \in I_\sigma} x_{ij} &\leq s_j \cdot d_{j\sigma} \quad &&\forall j \in G,\ \forall \sigma \in S \\
+d_j &\geq d_{j\sigma} \quad &&\forall j \in G,\ \forall \sigma \in S \\
+\sum_{j \in G} d_j &\leq \gamma &&
+\end{align*}
+
+\noindent
 Where:
 \begin{itemize}
-    \item \(\alpha \in (0.5, 1)\): Dominance threshold (e.g., \(\alpha = 0.5\) for majority control)
-    \item \(d_j \in \{0,1\}\): Indicator whether group \(j\) is dominated
-    \item \(M\): Large constant (e.g., \(M = 13\)) to linearize the conditional logic
-    \item \(\gamma\): Maximum of allowed dominated groups (e.g., \(\gamma = \lceil 0.05 \cdot |G| \rceil\))
+    \item $d_{j\sigma} = 1$ iff stakeholder $\sigma$ forms a strict majority in group $j$
+    \item $d_j = 1$ iff some stakeholder dominates group $j$
+    \item $\gamma$: Maximum number of groups allowed to be dominated by any stakeholder (e.g., $\gamma = \lceil 0.05 \cdot |G| \rceil$)
 \end{itemize}
 \noindent
 \subsection*{Constraint Threshold Calibration}
 \textbf{Diversity Threshold \(\delta\):}\\[3pt]
 Empirically selected from the distribution of intra-group diversity scores in observed or simulated groupings.
 Typical values include the 75th or 90th percentile of feasible groupings.
+\\
 \noindent
 \textbf{Engagement Threshold \(\eta\):}\\[3pt]
 Derived from desired minimum engagement per group.

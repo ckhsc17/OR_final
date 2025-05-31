@@ -1,0 +1,34 @@
+\subsection*{The UberX — vTaiwan.tw Dataset}
+
+Our real-world data is taken from a vTaiwan deliberation on the regulation of UberX,
+involving 1921 participants and 197 public comments.
+The dataset combines structured participant behavior
+with unstructured textual input to support clustering and modeling tasks.
+
+The \emph{participants-votes} dataset contains 1921 rows (one per participant) and 203 columns,
+including metadata (e.g., number of comments, votes, agreements)
+and binary vote indicators on 198 proposals.
+It was used to construct the participant set \(P\), engagement scores \(E(i)\),
+pairwise diversity scores \(D(i,k)\) and to do feature engineering.
+
+The \emph{comments} dataset consists of 197 entries authored by 105 unique participants.
+Each comment is timestamped and annotated with moderation status
+(whether it was rejected), agree/disagree counts, as well as comment and author IDs.
+
+Together, these datasets provide the structural foundation for modeling group assignment via Integer Programming:
+participants are assigned to groups (\(x_{ij} \in \{0,1\}\))
+such that intra-group diversity \(D(i,k)\) is maximized
+and engagement fairness across groups is preserved using \(E(i)\).
+Diversity scores and engagement vectors are derived from them as described in \cref{sec:solution}.
+
+\subsection*{Feature Engineering}
+
+To derive stakeholder affiliations and better understand voting behavior,
+we applied a pretrained RoBERTa model to label each comment with one of three sentiment categories:
+\emph{positive}, \emph{neutral}, or \emph{negative}.
+Using these sentiment labels and raw vote data,
+we extracted additional features such as \emph{fraction-agree}, \emph{fraction-pass},
+\emph{sentiment-bias}, and \emph{vote-entropy}.
+These features were then used to cluster participants into groups of similar interests or views—
+which we refer to as \emph{stakeholder sets}—using k-means clustering,
+with the optimal number of clusters determined via the elbow method.

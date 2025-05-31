@@ -304,8 +304,8 @@ def load_data_sparse_downsampled_priority_commenters(pv_path: str | Path,
 # Lagrangian Decomposition core - Optimized for large-scale problems
 # ──────────────────────────────────────────────────────────────
 
-def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env, E, D, Type) -> tuple[gp.Model, gp.tupledict]:
-    #global E
+def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env) -> tuple[gp.Model, gp.tupledict]:
+    global E
     """
     Build the assignment model once for reuse across Lagrangian iterations.
     
@@ -322,15 +322,9 @@ def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env, E, D, Ty
     Subsequent iterations only update objective coefficients (~30-80ms per solve)
     """
     mdl = gp.Model(env=env)
-    print(f"DEBUG: n={n}, m={m}")
-    if Type == 1:
-        print("DEBUG: Type=1")
-        x = mdl.addVars(n, m, vtype=gp.GRB.BINARY, name="x")
-    else:
-        print("DEBUG: Type=0")
-        x = mdl.addVars(n, m, vtype=gp.GRB.CONTINUOUS, lb=0.0, ub=1.0, name="x")
+    x = mdl.addVars(n, m, vtype=gp.GRB.BINARY, name="x")
 
-    delta, eta = calibrate_params(D, E, s_max, m)
+    eta = 20 * s_min
 
     # CONSTRAINT 1: Each participant assigned to exactly one group
     for i in range(n):
@@ -372,7 +366,7 @@ def build_assignment_model(n: int, m: int, s_min: int, s_max: int, env, E, D, Ty
     mdl.setObjective(gp.LinExpr(), gp.GRB.MINIMIZE)
     
     # OPTIMIZATION PARAMETERS for large-scale repeated solving
-    mdl.Params.OutputFlag = 0        # Suppress output for speed
+    mdl.Params.OutputFlag = 1        # Suppress output for speed
     mdl.Params.Threads = 8           # Use all M-series cores
     mdl.Params.Presolve = 1          # Light presolve for warm-start efficiency
     mdl.Params.Method = 2            # Barrier method often faster for large LPs
@@ -465,7 +459,7 @@ def solve_subproblem(cost: np.ndarray, s_min: int, s_max: int) -> np.ndarray:
         model.addConstr(x.sum('*', j) >= s_min)  # Minimum group size
         model.addConstr(x.sum('*', j) <= s_max)  # Maximum group size
     
-    model.Params.OutputFlag = 0
+    model.Params.OutputFlag = 1
     model.optimize()
     
     # Extract solution and return assignment vector
@@ -478,8 +472,7 @@ def lagrangian_decompose(n: int, m: int, D: np.ndarray, E: np.ndarray, *,
                          max_iter: int = 60, step0: float = 25.0,
                          random_state: int = 0,
                          use_optimized: bool = True,
-                         update_var_every: int = 5,
-                         Type: int = 1) -> tuple[np.ndarray, float]:
+                         update_var_every: int = 5) -> tuple[np.ndarray, float]:
     """
     Lagrangian decomposition algorithm for v3 group assignment optimization.
     
@@ -556,7 +549,7 @@ def lagrangian_decompose(n: int, m: int, D: np.ndarray, E: np.ndarray, *,
     # ═══════════════════════════════════════════════════════════════
     if use_optimized:
         print(f"[Lagrangian] Building optimized model for n={n}, m={m}...")
-        mdl, x = build_assignment_model(n, m, s_min, s_max, env, E, D, Type)
+        mdl, x = build_assignment_model(n, m, s_min, s_max, env)
         print(f"[Lagrangian] Model built: {mdl.NumVars} vars, {mdl.NumConstrs} constraints")
     
     assign = np.arange(n) % m  # Round-robin: participant i → group (i mod m)
@@ -679,47 +672,6 @@ def compute_metrics(assign: np.ndarray,
                 inter_polarization=float(inter),
                 engagement_var=float(np.var(es)))
 
-# Solve Lagrangian instance
-def solve_lagrangian_instance(n, D, E, smax,
-                               lam1: float = 1.0,
-                               lam2: float = 0.0001,
-                               max_iter: int = 60,
-                               seed: int = 0,
-                               Type = int):
-    """
-    Wrapper for Lagrangian decomposition on a generated instance.
-    Returns assignment array, objective value, group count m, size bounds.
-    """
-
-    from math import ceil, floor
-
-    # 1. 自動調整群組數與大小上下界
-    m_init = math.ceil(n / smax)
-    S_min_init = max(1, math.floor(n / m_init))
-    S_max_init = smax
-    m, S_min, S_max = auto_adjust_group_params(
-        n, m_init, S_min_init, S_max_init, prefer_fix_m=True)
-
-    # 2. 計算 delta, eta（Lagrangian 演算法內部會用到 delta）
-    delta, eta = calibrate_params(D, E, S_max, m)
-
-    # 3. 呼叫核心 Lagrangian decomposition
-    assign, obj_val = lagrangian_decompose(
-        n=n,
-        m=m,
-        D=D,
-        E=E,
-        s_min=S_min,
-        s_max=S_max,
-        delta=delta,
-        lam1=lam1,
-        lam2=lam2,
-        max_iter=max_iter,
-        random_state=seed,
-        Type=Type
-    )
-    return assign, obj_val, m, S_min, S_max
-
 # ──────────────────────────────────────────────────────────────
 # CLI entry point
 # ──────────────────────────────────────────────────────────────
@@ -730,11 +682,11 @@ def main():
     parser.add_argument("--pv", default="participants-votes.csv")
     parser.add_argument("--cm", default="comments.csv")
     parser.add_argument("--m_init", type=int, default=2) # Initial number of groups
-    parser.add_argument("--s_min", type=int, default=5)
-    parser.add_argument("--s_max", type=int, default=15) # Maximum group size
-    parser.add_argument("--max_iter", type=int, default=600)
+    parser.add_argument("--s_min", type=int, default=1000)
+    parser.add_argument("--s_max", type=int, default=1500) # Maximum group size
+    parser.add_argument("--max_iter", type=int, default=60)
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--n_limit", type=int, default=n, help="Participant limit (use -1 for full dataset)")
+    parser.add_argument("--n_limit", type=int, default=2000, help="Participant limit (use -1 for full dataset)")
     parser.add_argument("--full", action="store_true", help="Use full dataset (equivalent to --n_limit -1)")
     args = parser.parse_args()
 
