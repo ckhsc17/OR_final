@@ -1,0 +1,25 @@
+This project uses two datasets provided by the vTaiwan deliberation platform—\texttt{participants-votes.csv} and \texttt{comments.csv}—to construct the input parameters for our group assignment optimization model (see \cref{sec:problem_formulation}).
+
+\subsection*{Participants Votes}
+
+This file contains individual-level data used to construct the participant set \(P\), engagement scores \(E(i)\), and pairwise diversity scores \(D(i,k)\). Each row represents a participant and includes:
+\begin{itemize}
+    \item \textbf{Participant ID:} Unique identifier for each participant.
+    \item \textbf{Group ID:} Original opinion group (used for benchmarking only).
+    \item \textbf{Comments:} Number of authored comments.
+    \item \textbf{Votes / Agrees / Disagrees:} Total and sentiment-specific voting activity.
+    \item \textbf{Voting Matrix:} A sparse binary matrix (participant $\times$ comment) where entries encode votes: \texttt{1} = agree, \texttt{-1} = disagree, \texttt{0} = pass, blank = no vote. This forms the basis for computing ideological disagreement \(D(i,k)\) via cosine or Jaccard dissimilarity.
+\end{itemize}
+
+\subsection*{Comments}
+
+This file summarizes each comment and is used to identify active participants and compute engagement levels. Each row includes:
+\begin{itemize}
+    \item \textbf{Comment ID:} Unique identifier for the comment.
+    \item \textbf{Author ID:} Maps back to the participant ID in \texttt{participants-votes.csv}.
+    \item \textbf{Agrees / Disagrees:} Vote totals received.
+    \item \textbf{Moderated:} Status flag indicating whether the comment was published.
+    \item \textbf{Comment Body:} Free-text content of the comment (not used in modeling).
+\end{itemize}
+
+Together, these datasets provide the structural foundation for modeling group assignment via Integer Programming: participants are assigned to groups (\(x_{ij} \in \{0,1\}\)) such that intra-group diversity \(D(i,k)\) is maximized and engagement fairness across groups is preserved using \(E(i)\). Diversity scores and engagement vectors are derived from these files as described in \cref{sec:solution}.
