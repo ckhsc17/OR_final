@@ -15,12 +15,20 @@
 \usepackage{url}
 \usepackage{mathtools}
 \usepackage{enumitem}
-\setlist[itemize]{itemsep=0pt, topsep=0pt}
-\setlist[enumerate]{itemsep=0pt, topsep=0pt}
+\setlist[itemize]{itemsep=1pt, topsep=2pt}
+\setlist[enumerate]{itemsep=1pt, topsep=2pt}
 \usepackage{authblk}
-\usepackage{algorithm}
-\usepackage{hyperref}
+% Define a custom color for links
+\usepackage[dvipsnames]{xcolor}
+\definecolor{myblue}{RGB}{50, 90, 160}
+% Links
+\usepackage[colorlinks=true,
+            linkcolor=black,
+            citecolor=myblue,
+            urlcolor=myblue]{hyperref}
 \usepackage[capitalize]{cleveref}
+\crefname{algorithm}{Algorithm}{Algorithms}
+\Crefname{algorithm}{Algorithm}{Algorithms}
 \usepackage{amsfonts}
 \usepackage{csquotes}
 \usepackage[a4paper, margin=0.7in]{geometry}
@@ -54,7 +62,7 @@
 \large Operations Research, Spring 2025 (113-2) \\ Group M}
 
 \author{b09607059 {\chinesefont 蔡宜芳}, b12705014 {\chinesefont 陳泊華},
-    b12705027 {\chinesefont 徐郁翔}, T13H06312 Philip, T13H06303 Kuehnel Paul}
+    b12705027 {\chinesefont 徐郁翔}, T13H06303 Kuehnel Paul}
 \affil{Department of Information Management, National Taiwan University}
 
 \begin{document}
@@ -69,6 +77,12 @@
 %while adhering to theoretically grounded group size constraints.
 %\end{abstract}
 %\newpage
+
+% Indentation
+\setlength{\parindent}{0pt}
+% Save space
+\linespread{0.93}  % Default is ~1.0; 0.96 is a small, safe reduction
+\setlength{\parskip}{0.5em}  % default is often 1em
 
 \section{Introduction}\label{sec:intro}
 \input{introduction}
@@ -89,8 +103,8 @@
 \section{Experiments and Results}\label{sec:experiments}
 \input{data-description}
 
-%\section{Performance Analysis}\label{sec:performance}
-%\input{performance-analysis}
+\section{Performance Analysis}\label{sec:performance}
+\input{performance-analysis}
 
 \section{Conclusion}\label{sec:conclusion}
 \input{conclusion}

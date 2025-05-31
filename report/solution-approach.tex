@@ -46,19 +46,16 @@ To improve scalability, we relax the binary and discrete constraints as follows:
     \item Group sizes: \( s_j \in \{3, 5, 7, 9, 11, 13\} \) is relaxed to continuous bounds \( 5 \leq s_j \leq 13 \).  
     \item Dominance indicators: \( d_j \in \{0, 1\} \) can be relaxed to \( d_j \in [0, 1] \), with appropriate rounding applied afterward to recover feasible discrete solutions.  
 \end{itemize}  
-We solve the relaxed model efficiently using Gurobi. While the LP relaxation provides a computational advantage and offers useful bounds, it still requires post-processing (e.g., rounding or repair heuristics) to obtain valid and feasible group assignments that satisfy the original problem's discrete and combinatorial nature.
+We solve the relaxed model efficiently using Gurobi.
+While the LP relaxation provides a computational advantage and offers useful bounds,
+it still requires post-processing (e.g., rounding or repair heuristics)
+to obtain valid and feasible group assignments that satisfy the original problem's discrete and combinatorial nature.
 
 \paragraph{Heuristic Algorithm:}
-We combine Lagrangian decomposition with local search:
-\begin{itemize}
-    \item Random initial assignment.
-    \item Primal updates: randomized reassignment to improve the Lagrangian objective.
-    \item Dual updates: multiplier adjustments via subgradient ascent.
-    \item Final repair step to fix constraint violations.
-\end{itemize}
 
-\begin{algorithm}[H]
-\caption*{Lagrangian Decomposition Heuristic for Group Assignment}
+\begin{algorithm}[htbp]
+\caption{Lagrangian Decomposition Heuristic for Group Assignment}
+\label{alg:heuristic-decomposition}
 \begin{algorithmic}[1]
 \State Initialize group assignments $x$ randomly
 \State Initialize Lagrange multipliers $\mu_j \gets 0$
@@ -84,5 +81,16 @@ We combine Lagrangian decomposition with local search:
 \end{algorithmic}
 \end{algorithm}
 
+Our heuristic algorithm (see \cref{alg:heuristic-decomposition})
+combines \emph{Lagrangian decomposition} with \emph{local search} techniques.
+We begin with a random initial assignment of participants to groups.
+In the \emph{primal update} step, we iteratively reassign participants in a randomized fashion
+to improve the current Lagrangian objective.
+In the \emph{dual update} step, we adjust the Lagrange multipliers using subgradient ascent to improve the relaxation.
+Finally, we apply a \emph{repair step} to resolve any remaining constraint violations and ensure a feasible solution.
+
 \subsection*{Computational Considerations}
-IP provides exact solutions but has exponential complexity. LP relaxations offer bounds but need rounding. The heuristic achieves near-optimal solutions efficiently, scaling to hundreds of participants and multiple groups, making it suitable for real-world applications.
+IP provides exact solutions but has exponential complexity.
+LP relaxations offer bounds but need rounding.
+The heuristic achieves near-optimal solutions efficiently, scaling to hundreds of participants and multiple groups,
+making it suitable for real-world applications.

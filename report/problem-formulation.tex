@@ -71,12 +71,10 @@ Each group must contain a minimum total engagement score:
 We define the absolute deviation of each group's engagement from the target \(\bar{E}\) using auxiliary variables:
 \begin{gather*}
     \sum_{i \in P} E(i)\,x_{ij} - \bar{E} \leq z_j \quad \forall j \in G\\
-    \bar{E} - \sum_{i \in P} E(i)\,x_{ij} \leq z_j \quad \forall j \in G\\
+    \bar{E} - \sum_{i \in P} E(i)\,x_{ij} \leq z_j \quad \forall j \in G
 \end{gather*}
 
-
 \textbf{(6) Stakeholder Dominance Control}\\[3pt]
-
 Participants are clustered into a fixed number of \emph{stakeholder clusters}
 based on similarities in voting behavior and preferences.
 These represent shared interests (such as \textit{taxi drivers}, \textit{Uber drivers}, or \textit{customers}).
@@ -100,12 +98,10 @@ where electoral boundaries are drawn to grant one party majority control over mo
 Let \(I_\sigma = \{i \in P \mid s(i) = \sigma\}\) denote the set of participants from stakeholder group \(\sigma \in S\).
 Then:
 \begin{gather*}
-    \sum_{i \in I_\sigma} x_{ij} \leq \alpha \cdot s_j + M \cdot d_j \quad \forall j \in G,\ \forall \sigma \in S\\
-    \sum_{j \in G} d_j \leq \gamma\\
+    \sum_{i \in I_\sigma} x_{ij} \leq \alpha \cdot s_j + M \cdot d_j \quad \forall j \in G,\ \forall \sigma \in S,
+    \qquad    \sum_{j \in G} d_j \leq \gamma
 \end{gather*}
 \noindent
-
-
 
 \subsection*{Constraint Threshold Calibration}
 \textbf{Diversity Threshold \(\delta\):}\\[3pt]

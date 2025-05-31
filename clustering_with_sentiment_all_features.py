@@ -148,7 +148,7 @@ plt.show()
 #
 #############
 
-optimal_k = 3
+optimal_k = 13
 
 # KMeans clustering
 kmeans = KMeans(n_clusters=optimal_k, random_state=42)

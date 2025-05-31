@@ -1,4 +1,49 @@
-\section{Analysis and Discussion}
+\subsection{Group Assignment Results on the UberX vTaiwan Dataset}
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{assets/groupiing_5.JPG}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{assets/grouping_15.JPG}
+    \end{minipage}
+    \caption{Distribution of stakeholder clusters across groups (left: 5 groups, right: 15 groups).}
+    \label{fig:grouping_5_n_15}
+\end{figure}
+
+\Cref{fig:grouping_5_n_15} illustrates how the two stakeholder clusters in the UberX dataset
+are distributed across the assigned deliberation groups.
+The left plot shows the outcome when partitioning participants into 5 groups,
+while the right plot corresponds to 15 groups.
+We observe that the algorithm strives to maintain a balanced representation of stakeholders across groups,
+while still assuring some groups to be dominated by the minority stakeholder (light blue),
+which supports constructive tension and viewpoint exposure.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{minipage}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{assets/pca_group-id.png}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.49\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{assets/pca_grouping_2.png}
+    \end{minipage}
+    \caption{PCA projection of participant space. Left: stakeholder labels. Right: assigned group labels.}
+    \label{fig:pca_grouping_comparison}
+\end{figure}
+
+\Cref{fig:pca_grouping_comparison} presents a PCA projection of the participant feature space.
+On the left, participants are colored by their original stakeholder cluster;
+on the right, by their assigned group.
+This comparison shows that the algorithm not only distributes stakeholders across groups,
+but also achieves a wide coverage of the PCA space—indicating strong intra-group diversity
+and an effective spread of viewpoints.
 
 \subsection{Experimental Design}
 
@@ -33,7 +78,7 @@ All results are aggregated by scenario and reported as averages across three see
 
 Solving the full integer program (IP) to optimality is computationally intensive and becomes intractable for large-scale group deliberation scenarios, especially when the number of participants and grouping constraints increase. In our preliminary tests, even with a powerful solver like Gurobi, solving the exact IP model required hundreds of seconds per instance. To alleviate this, we introduce a Lagrangian-based decomposition approach that retains modeling fidelity while significantly reducing computation time.
 
-Instead of relying on brute-force search or complete enumeration, we reformulate the group assignment problem using Lagrangian relaxation to decouple constraints, enabling more efficient optimization. In practice, we set the maximum number of iterations to \textbf{2000} for the heuristic method, and \textbf{600} for both the IP with Lagrangian relaxation and LP relaxation, ensuring a fair and controlled comparison across methods.
+Instead of relying on brute-force search or complete enumeration, we reformulate the group assignment problem using Lagrangian relaxation to decouple constraints, enabling more efficient optimization. In practice, we set the maximum number of iterations to \emph{2000} for the heuristic method, and \emph{600} for both the IP with Lagrangian relaxation and LP relaxation, ensuring a fair and controlled comparison across methods.
 
 \subsection{Baseline Comparisons}
 
@@ -68,13 +113,13 @@ All experiments were conducted on the same hardware platform (Apple M-series CPU
 
 \subsection{Optimality Gap}
 
-\textbf{Average Optimality Gap by Scenario} illustrates the average optimality gaps across nine different scenarios, defined by combinations of $(n, s_{\max})$. The IP Lagrangian solution serves as the benchmark baseline (gap = 0\%). 
+\emph{Average Optimality Gap by Scenario} illustrates the average optimality gaps across nine different scenarios, defined by combinations of $(n, s_{\max})$. The IP Lagrangian solution serves as the benchmark baseline (gap = 0\%).
 
-Among the three heuristics, the \textbf{Random Improvement Iteration Heuristic} consistently outperformed the Naive heuristic. For instance, in the largest instance $(n=1000, s_{\max}=15)$, the CHSF gap was approximately 75.0\%, compared to 887.1\% for the Naive heuristic—a reduction of over 91\%. Even in the smallest case $(n=50, s_{\max}=15)$, Random Improvement Iteration yielded a gap of 16.2\%, still substantially lower than the Naive heuristic's 140.2\%.
+Among the three heuristics, the \emph{Random Improvement Iteration Heuristic} consistently outperformed the Naive heuristic. For instance, in the largest instance $(n=1000, s_{\max}=15)$, the CHSF gap was approximately 75.0\%, compared to 887.1\% for the Naive heuristic—a reduction of over 91\%. Even in the smallest case $(n=50, s_{\max}=15)$, Random Improvement Iteration yielded a gap of 16.2\%, still substantially lower than the Naive heuristic's 140.2\%.
 
 The LP Relaxation method achieved near-zero gap in most scenarios (0\% except 0.4\% in the largest instance), affirming its tight bound but at the cost of high computation time, as discussed below.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{assets/gap.png}
     \caption{Average Optimality Gap by Scenario}
@@ -83,19 +128,25 @@ The LP Relaxation method achieved near-zero gap in most scenarios (0\% except 0.
 
 \subsection{Computation Time}
 
-\textbf{Figure 2} presents the average computation time on a logarithmic scale. While the Naive heuristic completed in under 0.01 seconds for all scenarios (e.g., 0.007s in $(n=1000, s_{\max}=15)$), Random Improvement Iteration required more time due to its iterative improvement steps—e.g., 1.35s in the same instance. Nevertheless, this is still orders of magnitude faster than LP Relaxation, which took over 413 seconds.
-
-Interestingly, Random Improvement Iteration provided a strong balance between solution quality and computational efficiency. Across all settings, it achieved substantial gap reduction compared to the Naive approach while keeping runtime within practical limits (all under 1.4 seconds). 
-
-\begin{figure}[H]
+\begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\textwidth]{assets/time.png}
     \caption{Average Computation Time by Scenario (Log Scale)}
     \label{fig:avg-computation-time}
 \end{figure}
 
+\cref{fig:avg-computation-time} presents the average computation time on a logarithmic scale.
+While the Naive heuristic completed in under 0.01 seconds for all scenarios (e.g., 0.007s in $(n=1000, s_{\max}=15)$),
+Random Improvement Iteration required more time due to its iterative improvement steps—e.g., 1.35s in the same instance.
+Nevertheless, this is still orders of magnitude faster than LP Relaxation, which took over 413 seconds.
+
+Interestingly, Random Improvement Iteration provided a strong balance between solution quality and computational efficiency.
+Across all settings, it achieved substantial gap reduction compared to
+the Naive approach while keeping runtime within practical limits (all under 1.4 seconds).
+
+
 \subsection{Summary}
 
 In summary, the Random Improvement Iteration heuristic demonstrates clear advantages over the Naive baseline in both optimality and scalability. It also provides a viable alternative to LP Relaxation when computational cost is a limiting factor, especially for large-scale instances.
 
-In conclusion, the proposed \textbf{Lagrangian-based heuristic provides a compelling trade-off between solution quality and runtime}. It is especially suitable for large-scale, real-time, or resource-constrained scenarios. Furthermore, the modular structure of the heuristic framework makes it extendable to more general group assignment settings, including multi-objective, multi-stage, or incomplete-information environments.
+In conclusion, the proposed \emph{Lagrangian-based heuristic provides a compelling trade-off between solution quality and runtime}. It is especially suitable for large-scale, real-time, or resource-constrained scenarios. Furthermore, the modular structure of the heuristic framework makes it extendable to more general group assignment settings, including multi-objective, multi-stage, or incomplete-information environments.
