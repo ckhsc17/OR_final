@@ -1,19 +1,19 @@
 \subsection*{Model Implementation}
 
-We address the group assignment problem using three approaches: Integer Programming (IP), Linear Programming (LP) decomposition, and a heuristic based on Lagrangian relaxation.
+We address the group assignment problem using three approaches: Integer Programming (IP), Linear Programming (LP) relaxation, and a heuristic based on Lagrangian decomposition.
 
 Due to the computational difficulty of enforcing the quadratic diversity constraint, we relax it using nonnegative Lagrange multipliers $\mu_j$, transforming it into a penalized objective term.
 
 \subsection*{Lagrangian Objective Function}
 
 \[
-L(\mathbf{x}, \boldsymbol{\mu}) = \lambda_1 \sum_j \sum_{i<k} D(i,k) x_{ij} x_{kj} - \lambda_2 \sum_j (E_j - \bar{E})^2 + \sum_j \mu_j \left( \delta - \sum_{i<k} D(i,k) x_{ij} x_{kj} \right)
+L(\mathbf{x}, \boldsymbol{\mu}) = \lambda_1 \sum_{j \in G} \sum_{\substack{i \in P, k \in P \\ i < k}} D(i,k) x_{ij} x_{kj} - \lambda_2 \sum_{j \in G} z_j + \sum_{j \in G} \mu_j \left( \delta - \sum_{\substack{i \in P, k \in P \\ i < k}} D(i,k) x_{ij} x_{kj} \right)
 \]
 
 \subsection*{Decomposition}
 
 \[
-L(\mathbf{x}, \boldsymbol{\mu}) = \sum_{i,j} \text{cost}[i,j] \, x_{ij} - \lambda_2 \sum_j (E_j - \bar{E})^2 + \sum_j \mu_j \delta
+L(\mathbf{x}, \boldsymbol{\mu}) = \sum_{i \in P, j \in G} \text{cost}[i,j] \, x_{ij} - \lambda_2 \sum_{j \in G} z_j + \sum_{j \in G} \mu_j \delta
 \]
 
 where

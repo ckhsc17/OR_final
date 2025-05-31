@@ -7,7 +7,7 @@ Let:
     \item $D(i,k)$: Diversity score between participants $i$ and $k$.\\(e.g., ideological distance.)
     \item $E(i)$: Engagement score of participant $i$.\\(e.g., number of distinct issues voted on.)
     \item $x_{ij} \in \{0,1\}$: Indicating whether participant $i$ is assigned to group $j$.
-    \item $y_{jl} \in \{0,1\}$: Indicating whether group $j$ has size $l \in \{3,5,7,9,11,13\}$.
+    \item $y_{jl} \in \{0,1\}$: Indicating whether group $j$ has size $l \in \{5,7,9,11,13,15\}$.
     \item $z_j \geq 0$: Auxiliary variable representing the absolute deviation of group $j$’s engagement from the target $\bar{E}$.
     \item $d_j \in \{0,1\}$: Binary variable indicating whether group $j$ is dominated by any stakeholder group.
 \end{itemize}
@@ -24,7 +24,7 @@ We formulate a composite objective that balances intra-group diversity and engag
 \[
 \max \left[
 \lambda_1 \cdot \overbrace{
-\sum_{j \in G} \sum_{\substack{i,k \in P \\ i < k}} D(i,k)\,x_{ij} x_{kj}
+\sum_{j \in G} \sum_{\substack{i \in P, k \in P \\ i < k}} D(i,k)\,x_{ij} x_{kj}
   }^{\text{(A) Intra-group Diversity}}
 \hspace{0.2cm} - \hspace{0.2cm} \lambda_2 \cdot \hspace{-1.3cm} \overbrace{
 \sum_{j \in G} z_j
@@ -55,12 +55,12 @@ Each participant must be assigned to exactly one group:
 \]
 \\
 \textbf{(2) Discrete Group Sizes}\\[3pt]
-Each group must have a size from the set \(\{3,5,7,9,11,13\}\).
+Each group must have a size from the set \(\{5,7,9,11,13,15\}\).
 We enforce this using:
 \begin{gather*}
     s_j = \sum_{i \in P} x_{ij} \quad \forall j \in G\\
-    \sum_{l \in \{3,5,7,9,11,13\}} y_{jl} = 1 \quad \forall j \in G\\
-    s_j = \sum_{l \in \{3,5,7,9,11,13\}} l \cdot y_{jl} \quad \forall j \in G
+    \sum_{l \in \{5,7,9,11,13,15\}} y_{jl} = 1 \quad \forall j \in G\\
+    s_j = \sum_{l \in \{5,7,9,11,13,15\}} l \cdot y_{jl} \quad \forall j \in G
 \end{gather*}
 \textbf{(3) Diversity Threshold}\\[3pt]
 To avoid excessive internal conflict, each group’s diversity must not exceed a maximum threshold:
@@ -112,7 +112,7 @@ set \(\eta = 3 \cdot \bar{E}_{\text{individual}}\).
 To improve scalability, we relax the binary and discrete constraints as follows:
 \begin{itemize}
     \item Assignment variables: \quad $x_{ij} \in \{0,1\}$ is relaxed to $x_{ij} \in [0,1]$.
-    \item Group sizes: \quad $s_j \in \{3,5,7,9,11,13\}$ is relaxed to $5 \leq s_j \leq 13$.
+    \item Group sizes: \quad $s_j \in \{5,7,9,11,13,15\}$ is relaxed to $5 \leq s_j \leq 15$.
     \item Dominance indicators: \quad $d_j \in \{0,1\}$ can be relaxed to $d_j \in [0,1]$ in LP versions with appropriate rounding afterward.
 \end{itemize}
 We may apply rounding and post-processing to recover feasible integral solutions from the relaxed model.

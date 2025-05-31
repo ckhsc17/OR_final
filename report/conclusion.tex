@@ -1,4 +1,4 @@
-By formulating the group formation challenge as an integer optimization problem,
+By formulating the group formation challenge as an integer optimization problem based on Lagrangian decomposition,
 we present a flexible and interpretable approach for assigning participants to deliberative groups.
 Our model explicitly controls group size, diversity,
 and engagement balance—capabilities missing in traditional clustering-based techniques.
@@ -8,3 +8,13 @@ We expect the resulting groups to be more balanced and representative, improving
 and legitimacy in vTaiwan and similar participatory platforms.
 
 \subsection*{Limitations and Future Work}
+\begin{enumerate}
+    \item \textbf{Developing a More Suitable Mathematical Model under OR Settings} \\
+    In the current setting, not every participant votes on every comment. If we can collect more real-world data and increase the number of votes per comment, the model will become more robust. With richer data, we can better refine and adjust the hyperparameters to improve performance.
+
+    \item \textbf{Collecting Real-World Feedback on the Group Assignment} \\
+    We propose a new group assignment approach using OR techniques. To further enhance the model, it will be essential to gather real-world feedback from actual group assignment implementations. Such feedback can help identify practical challenges and guide improvements.
+
+    \item \textbf{Implementing Dynamic Group Assignment} \\
+    In real-world discussions, participants may join or leave at any time. Therefore, it would be valuable to design a dynamic system that continuously collects data and updates the group assignments in real time, ensuring adaptability and responsiveness.
+\end{enumerate}
