@@ -1,12 +1,10 @@
 %! suppress = UnresolvedReference
-\documentclass[11pt]{article}
+\documentclass[10pt]{article}
 \usepackage{graphicx} 
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage{microtype}
 % for Chinese
-\usepackage{fontspec}
-\newfontfamily\chinesefont{Heiti TC} % Font for Chinese
+\usepackage{xeCJK}
+
 % useful packages
 \usepackage{float}
 \usepackage{amsmath}
@@ -46,15 +44,16 @@
 
 % basic settings
 \renewcommand{\baselinestretch}{1.25}
-\parskip=5pt
-\parindent=20pt
+\parskip=2pt
+\parindent=10pt
 \footnotesep=5mm
 
 \title{Optimizing Consensus Building in vTaiwan Using Integer Programming \\
 \large Operations Research, Spring 2025 (113-2) \\ Group M}
 
-\author{b09607059 {\chinesefont 蔡宜芳}, b12705014 {\chinesefont 陳泊華},
-    b12705027 {\chinesefont 徐郁翔}, T13H06312 Philip, T13H06303 Kuehnel Paul}
+\author{b09607059 蔡宜芳, b12705014 陳泊華,
+    b12705027 徐郁翔, T13H06312 Philip, T13H06303 Kuehnel Paul}
+
 \affil{Department of Information Management, National Taiwan University}
 
 \begin{document}

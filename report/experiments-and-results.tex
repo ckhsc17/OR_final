@@ -1,4 +1,31 @@
 \subsection*{Dataset Description}
+
+In this project, we use two datasets provided by the vTaiwan deliberation platform: \texttt{participants-votes.csv} and \texttt{comments.csv}. These datasets capture interaction data from public consultations and are used to model group assignments based on ideological diversity and engagement.
+
+\subsubsection*{Participants Votes}
+
+This file contains metadata and voting behavior for each participant. Each row corresponds to a participant and includes:
+\begin{itemize}
+    \item \textbf{Participant ID:} Unique identifier for each participant.
+    \item \textbf{Group ID:} Assigned opinion group.
+    \item \textbf{Comments:} Number of comments authored.
+    \item \textbf{Votes / Agrees / Disagrees:} Total voting activity, including sentiment breakdown.
+    \item \textbf{Voting Matrix:} A sparse matrix where each column (by comment ID) indicates the participant's vote: \texttt{1} for agree, \texttt{-1} for disagree, \texttt{0} for pass, or blank if no vote.
+\end{itemize}
+
+\subsubsection*{Comments}
+
+This file summarizes each comment in the discussion. Each row includes:
+\begin{itemize}
+    \item \textbf{Comment ID:} Unique identifier for the comment.
+    \item \textbf{Author ID:} Participant ID of the comment's author.
+    \item \textbf{Agrees / Disagrees:} Aggregate votes received.
+    \item \textbf{Moderated:} Status flag (1 = allowed, -1 = moderated out, 0 = unmoderated).
+    \item \textbf{Comment Body:} Text content of the comment.
+\end{itemize}
+
+These datasets enable construction of agreement matrices and participant-level engagement scores for optimization modeling.
+
 \subsection*{Baseline Comparisons}
 \subsection*{Performance Metrics}
 \subsection*{Analysis and Discussion}
